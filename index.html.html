@@ -1,0 +1,1379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>StallTrack</title>
+<meta name="description" content="Stall Rent Management System">
+<meta name="theme-color" content="#c8f060">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="StallTrack">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222222;
+    --border: #2e2e2e;
+    --accent: #c8f060;
+    --accent2: #60c8f0;
+    --danger: #f06060;
+    --warning: #f0b860;
+    --success: #60f0a0;
+    --text: #f0f0f0;
+    --text2: #999;
+    --text3: #555;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  /* LOGIN */
+  #login-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    padding: 20px;
+  }
+  .login-box {
+    width: 100%;
+    max-width: 360px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px 32px;
+  }
+  .login-logo {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .login-sub { color: var(--text2); margin-bottom: 32px; font-size: 13px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 11px 14px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--accent);
+  }
+  .form-group textarea { resize: vertical; min-height: 80px; }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+  }
+  .btn-primary { background: var(--accent); color: #0f0f0f; width: 100%; }
+  .btn-primary:hover { background: #d4f572; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-success { background: var(--success); color: #0f0f0f; }
+  .btn-sm { padding: 7px 12px; font-size: 12px; }
+  .error-msg { color: var(--danger); font-size: 12px; margin-top: 8px; }
+
+  /* APP LAYOUT */
+  #app { display: none; flex-direction: column; min-height: 100vh; }
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .topbar-logo { font-family: 'Syne', sans-serif; font-weight: 800; color: var(--accent); font-size: 18px; }
+  .topbar-right { display: flex; align-items: center; gap: 10px; }
+  .logout-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* NAV */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 100;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 10px 4px 8px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--text3);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    gap: 3px;
+    transition: color 0.15s;
+  }
+  .nav-item.active { color: var(--accent); }
+  .nav-item svg { width: 20px; height: 20px; }
+
+  .main-content {
+    flex: 1;
+    padding: 20px 16px 90px;
+    max-width: 600px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* PAGES */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* DASHBOARD */
+  .page-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    margin-bottom: 4px;
+  }
+  .page-sub { color: var(--text2); font-size: 13px; margin-bottom: 20px; }
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  .stat-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .stat-value { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.danger { color: var(--danger); }
+  .stat-value.warning { color: var(--warning); }
+
+  /* STALL CARDS */
+  .stall-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .stall-card:hover { border-color: var(--accent); }
+  .stall-card.vacant { opacity: 0.6; }
+  .stall-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+  .stall-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; }
+  .stall-num { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text2); }
+  .badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .badge-occupied { background: rgba(96,240,160,0.15); color: var(--success); }
+  .badge-vacant { background: rgba(240,96,96,0.1); color: var(--text3); }
+  .badge-overdue { background: rgba(240,96,96,0.15); color: var(--danger); }
+  .badge-paid { background: rgba(96,240,160,0.15); color: var(--success); }
+  .badge-pending { background: rgba(240,184,96,0.15); color: var(--warning); }
+  .stall-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); margin-top: 4px; }
+  .stall-row span:last-child { color: var(--text); font-family: 'DM Mono', monospace; }
+
+  /* SECTION HEADER */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-title { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 16px; }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    padding: 24px 20px 32px;
+    width: 100%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    margin-bottom: 20px;
+  }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .modal-actions .btn { flex: 1; }
+
+  /* PAYMENT HISTORY */
+  .payment-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .payment-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .payment-amount { font-family: 'DM Mono', monospace; font-size: 16px; color: var(--accent); font-weight: 500; }
+  .payment-date { font-size: 12px; color: var(--text2); }
+  .payment-meta { font-size: 12px; color: var(--text2); }
+  .payment-ref { font-family: 'DM Mono', monospace; color: var(--text); }
+
+  /* UTILITY */
+  .utility-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .util-left { font-size: 13px; }
+  .util-stall { color: var(--text2); font-size: 11px; margin-top: 2px; }
+  .util-amount { font-family: 'DM Mono', monospace; color: var(--warning); }
+
+  /* MAINTENANCE */
+  .maint-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .maint-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+  .maint-title { font-weight: 500; font-size: 14px; }
+  .maint-desc { font-size: 12px; color: var(--text2); margin-top: 4px; }
+
+  /* RECEIPT */
+  .receipt-box {
+    background: #fff;
+    color: #111;
+    border-radius: 12px;
+    padding: 24px 20px;
+    font-family: 'DM Mono', monospace;
+  }
+  .receipt-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 20px; color: #111; }
+  .receipt-title { font-size: 12px; color: #666; margin-bottom: 16px; }
+  .receipt-divider { border: none; border-top: 1px dashed #ccc; margin: 12px 0; }
+  .receipt-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
+  .receipt-row.total { font-weight: 700; font-size: 15px; color: #000; border-top: 2px solid #111; padding-top: 10px; margin-top: 6px; }
+  .receipt-footer { text-align: center; font-size: 11px; color: #888; margin-top: 16px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  .empty-state { text-align: center; color: var(--text3); padding: 40px 20px; font-size: 13px; }
+  .empty-state .icon { font-size: 32px; margin-bottom: 10px; }
+
+  select option { background: #1a1a1a; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">🏪 StallTrack</div>
+    <div class="login-sub">Stall Rent Management System</div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="Enter your password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn btn-primary" onclick="doLogin()">Sign In →</button>
+    <div class="error-msg" id="login-error"></div>
+    <div style="margin-top:16px; font-size:12px; color:var(--text3);">First time? Default password: <span style="font-family:'DM Mono',monospace;color:var(--text2);">admin1234</span></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- INSTALL BANNER -->
+  <div id="install-banner" style="display:none;background:var(--accent);color:#0f0f0f;padding:12px 16px;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;z-index:200;">
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;">📱 Install StallTrack as an app!</div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="document.getElementById('install-banner').style.display='none'" style="background:rgba(0,0,0,0.15);border:none;color:#0f0f0f;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;">Later</button>
+      <button onclick="installApp()" style="background:#0f0f0f;border:none;color:var(--accent);padding:6px 12px;border-radius:6px;font-family:'Syne',sans-serif;font-weight:700;font-size:12px;cursor:pointer;">Install ↓</button>
+    </div>
+  </div>
+  <div class="topbar">
+    <div class="topbar-logo">🏪 StallTrack</div>
+    <div class="topbar-right">
+      <button class="logout-btn" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <!-- DASHBOARD -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">Dashboard</div>
+      <div class="page-sub" id="dash-date"></div>
+      <div class="stat-grid" id="stat-grid"></div>
+      <div class="section-header">
+        <div class="section-title">Stalls Overview</div>
+      </div>
+      <div id="stalls-overview"></div>
+    </div>
+
+    <!-- STALLS -->
+    <div class="page" id="page-stalls">
+      <div class="page-title">Stalls</div>
+      <div class="page-sub">Manage your 6 stalls</div>
+      <div id="stalls-list"></div>
+    </div>
+
+    <!-- PAYMENTS -->
+    <div class="page" id="page-payments">
+      <div class="page-title">Payments</div>
+      <div class="page-sub">All rent transactions</div>
+      <div class="section-header" style="margin-bottom:14px;">
+        <button class="btn btn-primary btn-sm" onclick="openAddPayment()">+ Record Payment</button>
+      </div>
+      <div id="payments-list"></div>
+    </div>
+
+    <!-- UTILITIES -->
+    <div class="page" id="page-utilities">
+      <div class="page-title">Utilities</div>
+      <div class="page-sub">Water & electricity bills</div>
+      <div class="section-header" style="margin-bottom:14px;">
+        <button class="btn btn-primary btn-sm" onclick="openAddUtility()">+ Add Bill</button>
+      </div>
+      <div id="utilities-list"></div>
+    </div>
+
+    <!-- MAINTENANCE -->
+    <div class="page" id="page-maintenance">
+      <div class="page-title">Maintenance</div>
+      <div class="page-sub">Track repair requests</div>
+      <div class="section-header" style="margin-bottom:14px;">
+        <button class="btn btn-primary btn-sm" onclick="openAddMaintenance()">+ Log Issue</button>
+      </div>
+      <div id="maintenance-list"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="page" id="page-settings">
+      <div class="page-title">Settings</div>
+      <div class="page-sub">Security & account settings</div>
+
+      <!-- Security Question Setup -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:4px;">🔐 Security Question</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">Used to verify your identity when changing your password.</div>
+        <div id="security-q-status" style="margin-bottom:14px;"></div>
+        <button class="btn btn-secondary" style="width:100%;" onclick="openSetSecurityQ()">Set / Update Security Question</button>
+      </div>
+
+      <!-- Change Password -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:4px;">🔑 Change Password</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">You'll need to answer your security question to change the password.</div>
+        <button class="btn btn-secondary" style="width:100%;" onclick="openChangePassword()">Change Password</button>
+      </div>
+
+      <!-- App Info -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:12px;">ℹ️ App Info</div>
+        <div class="stall-row"><span>App</span><span>StallTrack</span></div>
+        <div class="stall-row"><span>Version</span><span>1.0.0</span></div>
+        <div class="stall-row"><span>Data Storage</span><span>Local (your device)</span></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="showPage('dashboard',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </button>
+    <button class="nav-item" onclick="showPage('stalls',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Stalls
+    </button>
+    <button class="nav-item" onclick="showPage('payments',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      Payments
+    </button>
+    <button class="nav-item" onclick="showPage('utilities',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+      Utilities
+    </button>
+    <button class="nav-item" onclick="showPage('maintenance',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+      Repairs
+    </button>
+    <button class="nav-item" onclick="showPage('settings',this);renderSettings()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Settings
+    </button>
+  </nav>
+</div>
+
+<!-- STALL DETAIL MODAL -->
+<div class="modal-overlay" id="modal-stall">
+  <div class="modal">
+    <div class="modal-title" id="modal-stall-title">Stall Detail</div>
+    <div id="modal-stall-content"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-stall')">Close</button>
+      <button class="btn btn-primary" id="modal-stall-action">Record Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT STALL TENANT MODAL -->
+<div class="modal-overlay" id="modal-tenant">
+  <div class="modal">
+    <div class="modal-title" id="modal-tenant-title">Add Tenant</div>
+    <div class="form-group">
+      <label>Tenant Name</label>
+      <input type="text" id="tenant-name" placeholder="Full name">
+    </div>
+    <div class="form-group">
+      <label>Phone Number</label>
+      <input type="tel" id="tenant-phone" placeholder="07XX XXX XXX">
+    </div>
+    <div class="form-group">
+      <label>Move-in Date</label>
+      <input type="date" id="tenant-movein">
+    </div>
+    <div class="form-group">
+      <label>Rent Due Day (1–28)</label>
+      <input type="number" id="tenant-dueday" min="1" max="28" placeholder="e.g. 5">
+    </div>
+    <div class="form-group">
+      <label>Monthly Rent (KSh)</label>
+      <input type="number" id="tenant-rent" placeholder="6500">
+    </div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:4px 0 12px;">
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--accent2);margin-bottom:12px;">🔒 Deposit (One-off)</div>
+    <div class="form-group">
+      <label>Deposit Amount (KSh)</label>
+      <input type="number" id="tenant-deposit" placeholder="6500" value="6500">
+    </div>
+    <div class="form-group">
+      <label>Deposit Status</label>
+      <select id="tenant-deposit-status">
+        <option value="Paid">Paid</option>
+        <option value="Unpaid">Unpaid</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Deposit Paid Date</label>
+      <input type="date" id="tenant-deposit-date">
+    </div>
+    <div class="form-group">
+      <label>Deposit Ref / Receipt No. (optional)</label>
+      <input type="text" id="tenant-deposit-ref" placeholder="e.g. QJK2H4LWST">
+    </div>
+    <input type="hidden" id="tenant-stall-id">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-tenant')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTenant()">Save Tenant</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD PAYMENT MODAL -->
+<div class="modal-overlay" id="modal-payment">
+  <div class="modal">
+    <div class="modal-title">Record Payment</div>
+    <div class="form-group">
+      <label>Stall</label>
+      <select id="pay-stall"></select>
+    </div>
+    <div class="form-group">
+      <label>Amount (KSh)</label>
+      <input type="number" id="pay-amount" placeholder="6500">
+    </div>
+    <div class="form-group">
+      <label>Payment Date</label>
+      <input type="date" id="pay-date">
+    </div>
+    <div class="form-group">
+      <label>Payment Method</label>
+      <select id="pay-method">
+        <option value="M-Pesa">M-Pesa</option>
+        <option value="Cash">Cash</option>
+        <option value="Bank Transfer">Bank Transfer</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Transaction / Receipt No.</label>
+      <input type="text" id="pay-ref" placeholder="e.g. QJK2H4LWST">
+    </div>
+    <div class="form-group">
+      <label>Month Paid For</label>
+      <input type="month" id="pay-month">
+    </div>
+    <div class="form-group">
+      <label>Notes (optional)</label>
+      <textarea id="pay-notes" placeholder="Any additional notes..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-payment')">Cancel</button>
+      <button class="btn btn-primary" onclick="savePayment()">Save & Generate Receipt</button>
+    </div>
+  </div>
+</div>
+
+<!-- RECEIPT MODAL -->
+<div class="modal-overlay" id="modal-receipt">
+  <div class="modal">
+    <div class="modal-title">Receipt Generated ✓</div>
+    <div id="receipt-content"></div>
+    <div class="modal-actions" style="flex-direction:column;">
+      <button class="btn btn-success" onclick="shareReceipt()">📤 Share via WhatsApp</button>
+      <button class="btn btn-secondary" onclick="closeModal('modal-receipt')">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD UTILITY MODAL -->
+<div class="modal-overlay" id="modal-utility">
+  <div class="modal">
+    <div class="modal-title">Add Utility Bill</div>
+    <div class="form-group">
+      <label>Stall</label>
+      <select id="util-stall"></select>
+    </div>
+    <div class="form-group">
+      <label>Type</label>
+      <select id="util-type">
+        <option value="Water">Water</option>
+        <option value="Electricity">Electricity</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Amount (KSh)</label>
+      <input type="number" id="util-amount" placeholder="500">
+    </div>
+    <div class="form-group">
+      <label>Bill Date</label>
+      <input type="date" id="util-date">
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="util-status">
+        <option value="Paid">Paid</option>
+        <option value="Unpaid">Unpaid</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Notes (optional)</label>
+      <input type="text" id="util-notes" placeholder="e.g. Units: 45kWh">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-utility')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUtility()">Save Bill</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD MAINTENANCE MODAL -->
+<div class="modal-overlay" id="modal-maintenance">
+  <div class="modal">
+    <div class="modal-title">Log Maintenance Issue</div>
+    <div class="form-group">
+      <label>Stall</label>
+      <select id="maint-stall"></select>
+    </div>
+    <div class="form-group">
+      <label>Issue Title</label>
+      <input type="text" id="maint-title" placeholder="e.g. Broken door lock">
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="maint-desc" placeholder="Describe the issue..."></textarea>
+    </div>
+    <div class="form-group">
+      <label>Date Reported</label>
+      <input type="date" id="maint-date">
+    </div>
+    <div class="form-group">
+      <label>Priority</label>
+      <select id="maint-priority">
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Status</label>
+      <select id="maint-status">
+        <option value="Open">Open</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Resolved">Resolved</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-maintenance')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveMaintenance()">Save Issue</button>
+    </div>
+  </div>
+</div>
+
+<!-- MOVE OUT MODAL -->
+<div class="modal-overlay" id="modal-moveout">
+  <div class="modal">
+    <div class="modal-title">🚪 Tenant Moving Out</div>
+    <div id="moveout-tenant-info" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:20px;font-size:13px;color:var(--text2);"></div>
+    <div class="form-group">
+      <label>Move-out Date</label>
+      <input type="date" id="moveout-date">
+    </div>
+    <div class="form-group">
+      <label>Reason / Notes (optional)</label>
+      <textarea id="moveout-note" placeholder="e.g. Found bigger space, End of lease, etc."></textarea>
+    </div>
+    <div style="background:rgba(240,96,96,0.08);border:1px solid rgba(240,96,96,0.2);border-radius:8px;padding:12px;font-size:12px;color:var(--text2);margin-bottom:16px;">
+      ⚠️ The tenant's record and all their payments will be <strong style="color:var(--text)">kept in history</strong>. The stall will be marked vacant and ready for a new tenant.
+    </div>
+    <input type="hidden" id="moveout-stall-id">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-moveout')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmMoveOut()">Confirm Move Out</button>
+    </div>
+  </div>
+</div>
+
+<!-- SET SECURITY QUESTION MODAL -->
+<div class="modal-overlay" id="modal-security-q">
+  <div class="modal">
+    <div class="modal-title">🔐 Set Security Question</div>
+    <div class="form-group">
+      <label>Choose a Question</label>
+      <select id="sq-question">
+        <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
+        <option value="What was the name of your first pet?">What was the name of your first pet?</option>
+        <option value="What was the name of your primary school?">What was the name of your primary school?</option>
+        <option value="What is your eldest sibling's name?">What is your eldest sibling's name?</option>
+        <option value="What town were you born in?">What town were you born in?</option>
+        <option value="What is your favourite food?">What is your favourite food?</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Your Answer</label>
+      <input type="text" id="sq-answer" placeholder="Type your answer (case-insensitive)">
+    </div>
+    <div class="form-group">
+      <label>Confirm Answer</label>
+      <input type="text" id="sq-answer2" placeholder="Type again to confirm">
+    </div>
+    <div class="error-msg" id="sq-error"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-security-q')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSecurityQuestion()">Save Question</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHANGE PASSWORD MODAL -->
+<div class="modal-overlay" id="modal-change-pw">
+  <div class="modal">
+    <div id="cpw-step1">
+      <div class="modal-title">🔑 Change Password</div>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">Answer your security question:</div>
+        <div id="cpw-question" style="font-weight:600;color:var(--text);"></div>
+      </div>
+      <div class="form-group">
+        <label>Your Answer</label>
+        <input type="text" id="cpw-answer" placeholder="Type your answer">
+      </div>
+      <div class="error-msg" id="cpw-error"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-change-pw')">Cancel</button>
+        <button class="btn btn-primary" onclick="verifySQAnswer()">Verify →</button>
+      </div>
+    </div>
+    <div id="cpw-step2" style="display:none;">
+      <div class="modal-title">✅ Set New Password</div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="cpw-new" placeholder="Enter new password">
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="cpw-new2" placeholder="Repeat new password">
+      </div>
+      <div class="error-msg" id="cpw-error2"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-change-pw')">Cancel</button>
+        <button class="btn btn-primary" onclick="doChangePassword()">Save New Password</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────
+function getPassword() { return localStorage.getItem('app_password') || 'admin1234'; }
+function getSecurityQ() { try { return JSON.parse(localStorage.getItem('app_security')) || null; } catch { return null; } }
+function saveSecurityQ(q, a) { localStorage.setItem('app_security', JSON.stringify({ question: q, answer: a.toLowerCase().trim() })); }
+function savePassword(p) { localStorage.setItem('app_password', p); }
+let lastReceipt = null;
+
+const defaultStalls = [
+  { id: 1, name: 'Stall 1', rent: 6500, tenant: null, tenancyHistory: [] },
+  { id: 2, name: 'Stall 2', rent: 6500, tenant: null, tenancyHistory: [] },
+  { id: 3, name: 'Stall 3', rent: 6500, tenant: null, tenancyHistory: [] },
+  { id: 4, name: 'Stall 4', rent: 6500, tenant: null, tenancyHistory: [] },
+  { id: 5, name: 'Stall 5', rent: 6500, tenant: null, tenancyHistory: [] },
+  { id: 6, name: 'Stall 6', rent: 6000, tenant: null, tenancyHistory: [] },
+];
+
+function load(key, def) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; }
+}
+function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+
+let stalls = load('stalls', defaultStalls);
+let payments = load('payments', []);
+let utilities = load('utilities', []);
+let maintenance = load('maintenance', []);
+
+function saveAll() {
+  save('stalls', stalls);
+  save('payments', payments);
+  save('utilities', utilities);
+  save('maintenance', maintenance);
+}
+
+// ─── AUTH ─────────────────────────────────────────────────────
+function doLogin() {
+  const pw = document.getElementById('login-password').value;
+  if (pw === getPassword()) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    renderAll();
+  } else {
+    document.getElementById('login-error').textContent = 'Incorrect password. Try again.';
+  }
+}
+function doLogout() {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('login-password').value = '';
+}
+
+// ─── NAV ──────────────────────────────────────────────────────
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  el.classList.add('active');
+}
+
+// ─── MODALS ───────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ─── RENDER ALL ───────────────────────────────────────────────
+function renderAll() {
+  renderDashboard();
+  renderStalls();
+  renderPayments();
+  renderUtilities();
+  renderMaintenance();
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────
+function renderDashboard() {
+  const now = new Date();
+  document.getElementById('dash-date').textContent = now.toLocaleDateString('en-KE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  const occupied = stalls.filter(s => s.tenant).length;
+  const totalRent = stalls.filter(s => s.tenant).reduce((a, s) => a + s.rent, 0);
+  const thisMonth = now.toISOString().slice(0, 7);
+  const collectedThisMonth = payments.filter(p => p.month === thisMonth).reduce((a, p) => a + p.amount, 0);
+  const overdueCount = stalls.filter(s => {
+    if (!s.tenant) return false;
+    const paid = payments.some(p => p.stallId === s.id && p.month === thisMonth);
+    return !paid;
+  }).length;
+
+  const depositsCollected = stalls.filter(s => s.tenant && s.tenant.depositStatus === 'Paid').reduce((a,s) => a + (s.tenant.deposit || 6500), 0);
+  const depositsPending = stalls.filter(s => s.tenant && s.tenant.depositStatus !== 'Paid').length;
+
+  document.getElementById('stat-grid').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Occupied Stalls</div><div class="stat-value accent">${occupied}/6</div></div>
+    <div class="stat-card"><div class="stat-label">Expected Rent</div><div class="stat-value">KSh ${totalRent.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">Collected This Month</div><div class="stat-value accent">KSh ${collectedThisMonth.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">Overdue This Month</div><div class="stat-value ${overdueCount > 0 ? 'danger' : 'accent'}">${overdueCount} stall${overdueCount !== 1 ? 's' : ''}</div></div>
+    <div class="stat-card"><div class="stat-label">Deposits Collected</div><div class="stat-value accent">KSh ${depositsCollected.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">Deposits Pending</div><div class="stat-value ${depositsPending > 0 ? 'warning' : 'accent'}">${depositsPending} tenant${depositsPending !== 1 ? 's' : ''}</div></div>
+  `;
+
+  const thisMonth2 = now.toISOString().slice(0, 7);
+  document.getElementById('stalls-overview').innerHTML = stalls.map(s => {
+    const paid = s.tenant ? payments.some(p => p.stallId === s.id && p.month === thisMonth2) : false;
+    return `<div class="stall-card ${!s.tenant ? 'vacant' : ''}" onclick="openStallDetail(${s.id})">
+      <div class="stall-header">
+        <div>
+          <div class="stall-name">${s.name}</div>
+          <div class="stall-num">KSh ${s.rent.toLocaleString()}/mo</div>
+        </div>
+        ${s.tenant
+          ? `<span class="badge ${paid ? 'badge-paid' : 'badge-overdue'}">${paid ? 'Paid' : 'Overdue'}</span>`
+          : `<span class="badge badge-vacant">Vacant</span>`}
+      </div>
+      ${s.tenant ? `<div class="stall-row"><span>Tenant</span><span>${s.tenant.name}</span></div>` : '<div class="stall-row" style="color:var(--text3)">No tenant assigned</div>'}
+    </div>`;
+  }).join('');
+}
+
+// ─── STALLS PAGE ──────────────────────────────────────────────
+function renderStalls() {
+  document.getElementById('stalls-list').innerHTML = stalls.map(s => {
+    return `<div class="stall-card ${!s.tenant ? 'vacant' : ''}" onclick="openStallDetail(${s.id})">
+      <div class="stall-header">
+        <div>
+          <div class="stall-name">${s.name}</div>
+          <div class="stall-num">KSh ${s.rent.toLocaleString()}/month</div>
+        </div>
+        <span class="badge ${s.tenant ? 'badge-occupied' : 'badge-vacant'}">${s.tenant ? 'Occupied' : 'Vacant'}</span>
+      </div>
+      ${s.tenant ? `
+        <div class="stall-row"><span>Tenant</span><span>${s.tenant.name}</span></div>
+        <div class="stall-row"><span>Phone</span><span>${s.tenant.phone}</span></div>
+        <div class="stall-row"><span>Due Day</span><span>${s.tenant.dueDay}${['st','nd','rd'][s.tenant.dueDay-1]||'th'} of month</span></div>
+        <div class="stall-row"><span>Move-in</span><span>${s.tenant.moveIn}</span></div>
+        <div class="stall-row"><span>Deposit</span><span><span class="badge ${s.tenant.depositStatus==='Paid'?'badge-paid':'badge-pending'}">${s.tenant.depositStatus||'Unpaid'}</span></span></div>
+      ` : '<div class="stall-row" style="color:var(--text3);margin-top:4px;">Click to assign a tenant</div>'}
+    </div>`;
+  }).join('');
+}
+
+function openStallDetail(stallId) {
+  const s = stalls.find(x => x.id === stallId);
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0, 7);
+  const stallPayments = payments.filter(p => p.stallId === stallId).sort((a,b)=>b.date.localeCompare(a.date));
+  const paid = stallPayments.some(p => p.month === thisMonth);
+
+  let html = `<div class="stall-row" style="margin-bottom:12px;font-size:15px;"><span style="color:var(--text2)">Monthly Rent</span><span style="color:var(--accent);font-family:'DM Mono',monospace;font-size:18px;">KSh ${s.rent.toLocaleString()}</span></div>`;
+
+  if (s.tenant) {
+    html += `
+      <div class="stall-row"><span>Tenant</span><span>${s.tenant.name}</span></div>
+      <div class="stall-row"><span>Phone</span><span>${s.tenant.phone}</span></div>
+      <div class="stall-row"><span>Move-in</span><span>${s.tenant.moveIn}</span></div>
+      <div class="stall-row"><span>Rent Due</span><span>${s.tenant.dueDay}${['st','nd','rd'][s.tenant.dueDay-1]||'th'} every month</span></div>
+      <div class="stall-row" style="margin-top:8px;"><span>This Month</span><span><span class="badge ${paid ? 'badge-paid' : 'badge-overdue'}">${paid ? '✓ Paid' : '✗ Overdue'}</span></span></div>
+      <div class="stall-row" style="margin-top:4px;"><span>Deposit</span><span><span class="badge ${s.tenant.depositStatus==='Paid'?'badge-paid':'badge-overdue'}">${s.tenant.depositStatus==='Paid' ? '✓ KSh '+(s.tenant.deposit||6500).toLocaleString() : '✗ Unpaid — KSh '+(s.tenant.deposit||6500).toLocaleString()}</span></span></div>
+      ${s.tenant.depositStatus==='Paid' && s.tenant.depositDate ? `<div class="stall-row" style="font-size:11px;color:var(--text3);"><span>Deposit Date</span><span>${s.tenant.depositDate}${s.tenant.depositRef?' · '+s.tenant.depositRef:''}</span></div>` : ''}
+      <hr class="divider">
+      <div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:10px;">Payment History</div>
+    `;
+    if (stallPayments.length === 0) {
+      html += `<div class="empty-state"><div class="icon">💳</div>No payments recorded yet</div>`;
+    } else {
+      html += stallPayments.slice(0, 6).map(p => `
+        <div class="payment-item">
+          <div class="payment-top">
+            <span class="payment-amount">KSh ${p.amount.toLocaleString()}</span>
+            <span class="payment-date">${p.date}</span>
+          </div>
+          <div class="payment-meta">${p.method} · For: ${p.month} <span class="payment-ref">${p.ref ? '· ' + p.ref : ''}</span></div>
+        </div>
+      `).join('');
+    }
+
+    // Tenancy history
+    const history = (s.tenancyHistory || []);
+    if (history.length > 0) {
+      html += `<hr class="divider"><div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:10px;color:var(--text2);">📋 Previous Tenants</div>`;
+      html += history.slice().reverse().map(t => {
+        const tPayments = payments.filter(p => p.stallId === stallId && p.tenantId === t.id);
+        const total = tPayments.reduce((a,p) => a+p.amount, 0);
+        return `<div class="payment-item" style="border-color:var(--border);opacity:0.75;">
+          <div class="payment-top">
+            <span style="font-weight:600;color:var(--text);">${t.name}</span>
+            <span class="payment-date">${t.moveIn} → ${t.moveOut}</span>
+          </div>
+          <div class="payment-meta">${t.phone} · Rent: KSh ${(t.rent||6500).toLocaleString()}/mo · Deposit: <span class="${t.depositStatus==='Paid'?'':''}">KSh ${(t.deposit||6500).toLocaleString()} ${t.depositStatus==='Paid'?'✓':'(Unpaid)'}</span></div>
+          <div class="payment-meta" style="margin-top:3px;">Total paid: <span style="color:var(--accent);font-family:'DM Mono',monospace;">KSh ${total.toLocaleString()}</span> ${t.moveOutNote ? '· '+t.moveOutNote : ''}</div>
+        </div>`;
+      }).join('');
+    }
+  } else {
+    html += `<div class="empty-state"><div class="icon">🏪</div><div>This stall is vacant.<br>Assign a tenant to get started.</div></div>`;
+  }
+
+  document.getElementById('modal-stall-title').textContent = s.name;
+  document.getElementById('modal-stall-content').innerHTML = html;
+
+  if (s.tenant) {
+    document.querySelector('#modal-stall .modal-actions').innerHTML = `
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-stall')">Close</button>
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-stall');openEditTenant(${stallId})">Edit</button>
+      <button class="btn btn-danger btn-sm" onclick="closeModal('modal-stall');openMoveOut(${stallId})">Move Out</button>
+      <button class="btn btn-primary btn-sm" onclick="closeModal('modal-stall');openAddPayment(${stallId})">+ Pay</button>
+    `;
+  } else {
+    // Show history if vacant
+    const history = (s.tenancyHistory || []);
+    if (history.length > 0) {
+      let histHtml = `<hr class="divider"><div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:10px;color:var(--text2);">📋 Previous Tenants</div>`;
+      histHtml += history.slice().reverse().map(t => {
+        const tPayments = payments.filter(p => p.stallId === stallId && p.tenantId === t.id);
+        const total = tPayments.reduce((a,p) => a+p.amount, 0);
+        return `<div class="payment-item" style="opacity:0.75;">
+          <div class="payment-top"><span style="font-weight:600;color:var(--text);">${t.name}</span><span class="payment-date">${t.moveIn} → ${t.moveOut}</span></div>
+          <div class="payment-meta">${t.phone} · Rent: KSh ${(t.rent||6500).toLocaleString()}/mo</div>
+          <div class="payment-meta" style="margin-top:3px;">Total paid: <span style="color:var(--accent);font-family:'DM Mono',monospace;">KSh ${total.toLocaleString()}</span> ${t.moveOutNote?'· '+t.moveOutNote:''}</div>
+        </div>`;
+      }).join('');
+      document.getElementById('modal-stall-content').innerHTML += histHtml;
+    }
+    document.querySelector('#modal-stall .modal-actions').innerHTML = `
+      <button class="btn btn-secondary" onclick="closeModal('modal-stall')">Close</button>
+      <button class="btn btn-primary" onclick="closeModal('modal-stall');openAddTenant(${stallId})">Assign New Tenant</button>
+    `;
+  }
+
+  openModal('modal-stall');
+}
+
+// ─── TENANT ───────────────────────────────────────────────────
+function openAddTenant(stallId) {
+  document.getElementById('modal-tenant-title').textContent = 'Assign Tenant';
+  document.getElementById('tenant-stall-id').value = stallId;
+  const s = stalls.find(x => x.id === stallId);
+  document.getElementById('tenant-name').value = '';
+  document.getElementById('tenant-phone').value = '';
+  document.getElementById('tenant-movein').value = new Date().toISOString().slice(0,10);
+  document.getElementById('tenant-dueday').value = '';
+  document.getElementById('tenant-rent').value = s.rent;
+  document.getElementById('tenant-deposit').value = 6500;
+  document.getElementById('tenant-deposit-status').value = 'Unpaid';
+  document.getElementById('tenant-deposit-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('tenant-deposit-ref').value = '';
+  openModal('modal-tenant');
+}
+
+function openEditTenant(stallId) {
+  const s = stalls.find(x => x.id === stallId);
+  if (!s.tenant) return;
+  document.getElementById('modal-tenant-title').textContent = 'Edit Tenant — ' + s.name;
+  document.getElementById('tenant-stall-id').value = stallId;
+  document.getElementById('tenant-name').value = s.tenant.name;
+  document.getElementById('tenant-phone').value = s.tenant.phone;
+  document.getElementById('tenant-movein').value = s.tenant.moveIn;
+  document.getElementById('tenant-dueday').value = s.tenant.dueDay;
+  document.getElementById('tenant-rent').value = s.rent;
+  document.getElementById('tenant-deposit').value = s.tenant.deposit || 6500;
+  document.getElementById('tenant-deposit-status').value = s.tenant.depositStatus || 'Unpaid';
+  document.getElementById('tenant-deposit-date').value = s.tenant.depositDate || new Date().toISOString().slice(0,10);
+  document.getElementById('tenant-deposit-ref').value = s.tenant.depositRef || '';
+  openModal('modal-tenant');
+}
+
+function saveTenant() {
+  const stallId = parseInt(document.getElementById('tenant-stall-id').value);
+  const name = document.getElementById('tenant-name').value.trim();
+  const phone = document.getElementById('tenant-phone').value.trim();
+  const moveIn = document.getElementById('tenant-movein').value;
+  const dueDay = parseInt(document.getElementById('tenant-dueday').value);
+  const rent = parseInt(document.getElementById('tenant-rent').value);
+  const deposit = parseInt(document.getElementById('tenant-deposit').value) || 6500;
+  const depositStatus = document.getElementById('tenant-deposit-status').value;
+  const depositDate = document.getElementById('tenant-deposit-date').value;
+  const depositRef = document.getElementById('tenant-deposit-ref').value.trim();
+  if (!name || !phone || !moveIn || !dueDay || !rent) { alert('Please fill all fields.'); return; }
+  const idx = stalls.findIndex(x => x.id === stallId);
+  const tenantId = Date.now();
+  stalls[idx].tenant = { id: tenantId, name, phone, moveIn, dueDay, deposit, depositStatus, depositDate, depositRef };
+  stalls[idx].rent = rent;
+  if (!stalls[idx].tenancyHistory) stalls[idx].tenancyHistory = [];
+  saveAll(); renderAll();
+  closeModal('modal-tenant');
+}
+
+// ─── MOVE OUT ─────────────────────────────────────────────────
+function openMoveOut(stallId) {
+  const s = stalls.find(x => x.id === stallId);
+  if (!s || !s.tenant) return;
+  document.getElementById('moveout-stall-id').value = stallId;
+  document.getElementById('moveout-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('moveout-note').value = '';
+  document.getElementById('moveout-tenant-info').innerHTML = `
+    <div style="font-weight:600;color:var(--text);margin-bottom:4px;">${s.tenant.name}</div>
+    <div>${s.name} · Moved in: ${s.tenant.moveIn}</div>
+    <div>Phone: ${s.tenant.phone} · Rent: KSh ${s.rent.toLocaleString()}/mo</div>
+  `;
+  openModal('modal-moveout');
+}
+
+function confirmMoveOut(stallId) {
+  const stallId2 = parseInt(document.getElementById('moveout-stall-id').value);
+  const moveOut = document.getElementById('moveout-date').value;
+  const note = document.getElementById('moveout-note').value.trim();
+  if (!moveOut) { alert('Please enter a move-out date.'); return; }
+  const idx = stalls.findIndex(x => x.id === stallId2);
+  const s = stalls[idx];
+  if (!s.tenant) return;
+  // Archive tenant into history
+  if (!s.tenancyHistory) s.tenancyHistory = [];
+  s.tenancyHistory.push({
+    ...s.tenant,
+    rent: s.rent,
+    moveOut,
+    moveOutNote: note,
+  });
+  // Clear current tenant, keep rent amount for next tenant
+  stalls[idx].tenant = null;
+  saveAll(); renderAll();
+  closeModal('modal-moveout');
+  // Open stall detail to show it's now vacant
+  setTimeout(() => openStallDetail(stallId2), 200);
+}
+
+// ─── PAYMENTS ─────────────────────────────────────────────────
+function openAddPayment(stallId) {
+  const sel = document.getElementById('pay-stall');
+  sel.innerHTML = stalls.filter(s => s.tenant).map(s => `<option value="${s.id}" ${s.id===stallId?'selected':''}>${s.name} — ${s.tenant.name}</option>`).join('');
+  if (sel.options.length === 0) { alert('No occupied stalls. Please assign a tenant first.'); return; }
+  document.getElementById('pay-amount').value = stallId ? stalls.find(x=>x.id===stallId).rent : '';
+  document.getElementById('pay-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('pay-ref').value = '';
+  document.getElementById('pay-notes').value = '';
+  document.getElementById('pay-month').value = new Date().toISOString().slice(0,7);
+  openModal('modal-payment');
+}
+
+function savePayment() {
+  const stallId = parseInt(document.getElementById('pay-stall').value);
+  const amount = parseInt(document.getElementById('pay-amount').value);
+  const date = document.getElementById('pay-date').value;
+  const method = document.getElementById('pay-method').value;
+  const ref = document.getElementById('pay-ref').value.trim();
+  const month = document.getElementById('pay-month').value;
+  const notes = document.getElementById('pay-notes').value.trim();
+  if (!stallId || !amount || !date || !month) { alert('Please fill required fields.'); return; }
+  const s2 = stalls.find(x => x.id === stallId);
+  const tenantId = s2 && s2.tenant ? s2.tenant.id : null;
+  const p = { id: Date.now(), stallId, tenantId, amount, date, method, ref, month, notes };
+  payments.push(p);
+  saveAll(); renderAll();
+  closeModal('modal-payment');
+  showReceipt(p);
+}
+
+function showReceipt(p) {
+  const s = stalls.find(x => x.id === p.stallId);
+  const tenant = s ? s.tenant : null;
+  const now = new Date();
+  lastReceipt = { p, s, tenant };
+
+  document.getElementById('receipt-content').innerHTML = `
+    <div class="receipt-box">
+      <div class="receipt-logo">🏪 StallTrack</div>
+      <div class="receipt-title">Official Payment Receipt</div>
+      <hr class="receipt-divider">
+      <div class="receipt-row"><span>Stall</span><span>${s ? s.name : ''}</span></div>
+      <div class="receipt-row"><span>Tenant</span><span>${tenant ? tenant.name : ''}</span></div>
+      <div class="receipt-row"><span>Phone</span><span>${tenant ? tenant.phone : ''}</span></div>
+      <hr class="receipt-divider">
+      <div class="receipt-row"><span>Payment Date</span><span>${p.date}</span></div>
+      <div class="receipt-row"><span>For Month</span><span>${p.month}</span></div>
+      <div class="receipt-row"><span>Method</span><span>${p.method}</span></div>
+      ${p.ref ? `<div class="receipt-row"><span>Ref. No.</span><span>${p.ref}</span></div>` : ''}
+      ${p.notes ? `<div class="receipt-row"><span>Notes</span><span>${p.notes}</span></div>` : ''}
+      <div class="receipt-row total"><span>TOTAL PAID</span><span>KSh ${p.amount.toLocaleString()}</span></div>
+      <div class="receipt-footer">Receipt #${p.id} · Generated ${now.toLocaleDateString()}<br>Thank you for your payment!</div>
+    </div>
+  `;
+  openModal('modal-receipt');
+}
+
+function shareReceipt() {
+  if (!lastReceipt) return;
+  const { p, s, tenant } = lastReceipt;
+  const text = `🏪 *RENT RECEIPT*\n\n*Stall:* ${s.name}\n*Tenant:* ${tenant ? tenant.name : ''}\n*Month:* ${p.month}\n*Amount:* KSh ${p.amount.toLocaleString()}\n*Method:* ${p.method}\n*Ref No:* ${p.ref || 'N/A'}\n*Date:* ${p.date}\n\nThank you for your payment! ✅`;
+  const encoded = encodeURIComponent(text);
+  const phone = tenant ? tenant.phone.replace(/\D/g,'') : '';
+  const waPhone = phone.startsWith('0') ? '254' + phone.slice(1) : phone;
+  window.open(`https://wa.me/${waPhone}?text=${encoded}`, '_blank');
+}
+
+function renderPayments() {
+  const sorted = [...payments].sort((a,b)=>b.date.localeCompare(a.date));
+  if (sorted.length === 0) {
+    document.getElementById('payments-list').innerHTML = `<div class="empty-state"><div class="icon">💳</div>No payments recorded yet</div>`;
+    return;
+  }
+  document.getElementById('payments-list').innerHTML = sorted.map(p => {
+    const s = stalls.find(x => x.id === p.stallId);
+    return `<div class="payment-item">
+      <div class="payment-top">
+        <span class="payment-amount">KSh ${p.amount.toLocaleString()}</span>
+        <span class="payment-date">${p.date}</span>
+      </div>
+      <div class="payment-meta" style="margin-bottom:4px;color:var(--text);font-weight:500;">${s ? s.name : ''} ${s && s.tenant ? '· ' + s.tenant.name : ''}</div>
+      <div class="payment-meta">${p.method} · For: ${p.month} <span class="payment-ref">${p.ref ? '· ' + p.ref : ''}</span></div>
+      ${p.notes ? `<div class="payment-meta" style="margin-top:2px;">${p.notes}</div>` : ''}
+      <div style="margin-top:8px;"><button class="btn btn-secondary btn-sm" onclick="showReceipt(payments.find(x=>x.id===${p.id}))">🧾 View Receipt</button></div>
+    </div>`;
+  }).join('');
+}
+
+// ─── UTILITIES ────────────────────────────────────────────────
+function openAddUtility() {
+  const sel = document.getElementById('util-stall');
+  sel.innerHTML = stalls.map(s => `<option value="${s.id}">${s.name}${s.tenant ? ' — '+s.tenant.name : ' (Vacant)'}</option>`).join('');
+  document.getElementById('util-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('util-amount').value = '';
+  document.getElementById('util-notes').value = '';
+  openModal('modal-utility');
+}
+
+function saveUtility() {
+  const stallId = parseInt(document.getElementById('util-stall').value);
+  const type = document.getElementById('util-type').value;
+  const amount = parseInt(document.getElementById('util-amount').value);
+  const date = document.getElementById('util-date').value;
+  const status = document.getElementById('util-status').value;
+  const notes = document.getElementById('util-notes').value;
+  if (!amount || !date) { alert('Please fill required fields.'); return; }
+  utilities.push({ id: Date.now(), stallId, type, amount, date, status, notes });
+  saveAll(); renderUtilities();
+  closeModal('modal-utility');
+}
+
+function renderUtilities() {
+  const sorted = [...utilities].sort((a,b)=>b.date.localeCompare(a.date));
+  if (sorted.length === 0) {
+    document.getElementById('utilities-list').innerHTML = `<div class="empty-state"><div class="icon">⚡</div>No utility bills recorded yet</div>`;
+    return;
+  }
+  document.getElementById('utilities-list').innerHTML = sorted.map(u => {
+    const s = stalls.find(x => x.id === u.stallId);
+    return `<div class="utility-item">
+      <div>
+        <div class="util-left">${u.type} ${u.type === 'Water' ? '💧' : u.type === 'Electricity' ? '⚡' : '📋'} <span class="badge ${u.status==='Paid'?'badge-paid':'badge-overdue'}">${u.status}</span></div>
+        <div class="util-stall">${s ? s.name : ''} · ${u.date} ${u.notes ? '· '+u.notes : ''}</div>
+      </div>
+      <div class="util-amount">KSh ${u.amount.toLocaleString()}</div>
+    </div>`;
+  }).join('');
+}
+
+// ─── MAINTENANCE ──────────────────────────────────────────────
+function openAddMaintenance() {
+  const sel = document.getElementById('maint-stall');
+  sel.innerHTML = stalls.map(s => `<option value="${s.id}">${s.name}${s.tenant ? ' — '+s.tenant.name : ' (Vacant)'}</option>`).join('');
+  document.getElementById('maint-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('maint-title').value = '';
+  document.getElementById('maint-desc').value = '';
+  openModal('modal-maintenance');
+}
+
+function saveMaintenance() {
+  const stallId = parseInt(document.getElementById('maint-stall').value);
+  const title = document.getElementById('maint-title').value.trim();
+  const desc = document.getElementById('maint-desc').value.trim();
+  const date = document.getElementById('maint-date').value;
+  const priority = document.getElementById('maint-priority').value;
+  const status = document.getElementById('maint-status').value;
+  if (!title || !date) { alert('Please fill required fields.'); return; }
+  maintenance.push({ id: Date.now(), stallId, title, desc, date, priority, status });
+  saveAll(); renderMaintenance();
+  closeModal('modal-maintenance');
+}
+
+function toggleMaintStatus(id) {
+  const idx = maintenance.findIndex(x => x.id === id);
+  if (idx < 0) return;
+  const cycle = ['Open', 'In Progress', 'Resolved'];
+  const cur = cycle.indexOf(maintenance[idx].status);
+  maintenance[idx].status = cycle[(cur + 1) % 3];
+  saveAll(); renderMaintenance();
+}
+
+function renderMaintenance() {
+  const sorted = [...maintenance].sort((a,b)=>b.date.localeCompare(a.date));
+  if (sorted.length === 0) {
+    document.getElementById('maintenance-list').innerHTML = `<div class="empty-state"><div class="icon">🔧</div>No maintenance issues logged</div>`;
+    return;
+  }
+  const colorMap = { Open: 'badge-overdue', 'In Progress': 'badge-pending', Resolved: 'badge-paid' };
+  const prioColor = { Low: 'var(--text2)', Medium: 'var(--warning)', High: 'var(--danger)' };
+  document.getElementById('maintenance-list').innerHTML = sorted.map(m => {
+    const s = stalls.find(x => x.id === m.stallId);
+    return `<div class="maint-item">
+      <div class="maint-top">
+        <div>
+          <div class="maint-title">${m.title}</div>
+          <div class="maint-desc">${s ? s.name : ''} · ${m.date} · <span style="color:${prioColor[m.priority]}">${m.priority} Priority</span></div>
+        </div>
+        <span class="badge ${colorMap[m.status]}" style="cursor:pointer;white-space:nowrap;" onclick="toggleMaintStatus(${m.id})">${m.status}</span>
+      </div>
+      ${m.desc ? `<div class="maint-desc" style="margin-top:4px;">${m.desc}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// Close modals on overlay click
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
+// ─── SETTINGS ─────────────────────────────────────────────────
+function renderSettings() {
+  const sq = getSecurityQ();
+  const statusEl = document.getElementById('security-q-status');
+  if (sq) {
+    statusEl.innerHTML = `<div style="background:rgba(96,240,160,0.08);border:1px solid rgba(96,240,160,0.2);border-radius:8px;padding:12px;font-size:13px;">
+      <span style="color:var(--success);font-weight:600;">✓ Security question is set</span><br>
+      <span style="color:var(--text2);margin-top:4px;display:block;">Q: ${sq.question}</span>
+    </div>`;
+  } else {
+    statusEl.innerHTML = `<div style="background:rgba(240,184,96,0.08);border:1px solid rgba(240,184,96,0.2);border-radius:8px;padding:12px;font-size:13px;color:var(--warning);">
+      ⚠️ No security question set yet. Set one before you can change your password.
+    </div>`;
+  }
+}
+
+function openSetSecurityQ() {
+  document.getElementById('sq-answer').value = '';
+  document.getElementById('sq-answer2').value = '';
+  document.getElementById('sq-error').textContent = '';
+  openModal('modal-security-q');
+}
+
+function saveSecurityQuestion() {
+  const question = document.getElementById('sq-question').value;
+  const answer = document.getElementById('sq-answer').value.trim();
+  const answer2 = document.getElementById('sq-answer2').value.trim();
+  const errEl = document.getElementById('sq-error');
+  if (!answer) { errEl.textContent = 'Please enter an answer.'; return; }
+  if (answer.toLowerCase() !== answer2.toLowerCase()) { errEl.textContent = 'Answers do not match.'; return; }
+  saveSecurityQ(question, answer);
+  closeModal('modal-security-q');
+  renderSettings();
+  alert('✅ Security question saved!');
+}
+
+function openChangePassword() {
+  const sq = getSecurityQ();
+  if (!sq) { alert('Please set a security question first before changing your password.'); return; }
+  document.getElementById('cpw-question').textContent = sq.question;
+  document.getElementById('cpw-answer').value = '';
+  document.getElementById('cpw-new').value = '';
+  document.getElementById('cpw-new2').value = '';
+  document.getElementById('cpw-error').textContent = '';
+  document.getElementById('cpw-error2').textContent = '';
+  document.getElementById('cpw-step1').style.display = 'block';
+  document.getElementById('cpw-step2').style.display = 'none';
+  openModal('modal-change-pw');
+}
+
+function verifySQAnswer() {
+  const sq = getSecurityQ();
+  const answer = document.getElementById('cpw-answer').value.trim().toLowerCase();
+  const errEl = document.getElementById('cpw-error');
+  if (!answer) { errEl.textContent = 'Please enter your answer.'; return; }
+  if (answer !== sq.answer) { errEl.textContent = '❌ Incorrect answer. Please try again.'; return; }
+  document.getElementById('cpw-step1').style.display = 'none';
+  document.getElementById('cpw-step2').style.display = 'block';
+}
+
+function doChangePassword() {
+  const newPw = document.getElementById('cpw-new').value;
+  const newPw2 = document.getElementById('cpw-new2').value;
+  const errEl = document.getElementById('cpw-error2');
+  if (!newPw || newPw.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if (newPw !== newPw2) { errEl.textContent = 'Passwords do not match.'; return; }
+  savePassword(newPw);
+  closeModal('modal-change-pw');
+  alert('✅ Password changed successfully! Use your new password next time you log in.');
+}
+
+// ─── PWA INSTALL ──────────────────────────────────────────────
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-banner').style.display = 'flex';
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('install-banner').style.display = 'none';
+  deferredPrompt = null;
+});
+function installApp() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  deferredPrompt.userChoice.then(() => {
+    deferredPrompt = null;
+    document.getElementById('install-banner').style.display = 'none';
+  });
+}
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
