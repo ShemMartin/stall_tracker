@@ -367,6 +367,8 @@
     <div class="page active" id="page-dashboard">
       <div class="page-title">Dashboard</div>
       <div class="page-sub" id="dash-date"></div>
+      <!-- Backup reminder -->
+      <div id="backup-reminder" style="display:none;background:rgba(240,184,96,0.1);border:1px solid rgba(240,184,96,0.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--warning);align-items:center;justify-content:space-between;gap:10px;"></div>
       <div class="stat-grid" id="stat-grid"></div>
       <div class="section-header">
         <div class="section-title">Stalls Overview</div>
@@ -414,7 +416,20 @@
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
       <div class="page-title">Settings</div>
-      <div class="page-sub">Security & account settings</div>
+      <div class="page-sub">Security & backup settings</div>
+
+      <!-- BACKUP & RESTORE -->
+      <div style="background:var(--surface);border:1px solid var(--accent);border-radius:12px;padding:20px;margin-bottom:16px;">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:4px;">💾 Backup & Restore</div>
+        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">Your data is stored on this device only. If you format your phone or switch devices, you will lose everything unless you back up first.</div>
+        <div id="backup-last" style="font-size:11px;color:var(--text3);margin-bottom:16px;"></div>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:10px;" onclick="exportBackup()">📤 Export Backup (Download File)</button>
+        <button class="btn btn-secondary" style="width:100%;" onclick="document.getElementById('restore-input').click()">📥 Restore from Backup</button>
+        <input type="file" id="restore-input" accept=".json" style="display:none;" onchange="importBackup(event)">
+        <div style="margin-top:12px;background:rgba(200,240,96,0.06);border:1px solid rgba(200,240,96,0.15);border-radius:8px;padding:10px;font-size:11px;color:var(--text2);">
+          💡 <strong style="color:var(--text);">Tip:</strong> Export weekly and save to Google Drive or WhatsApp yourself the file. Takes 5 seconds.
+        </div>
+      </div>
 
       <!-- Security Question Setup -->
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">
@@ -843,6 +858,19 @@ function renderAll() {
 function renderDashboard() {
   const now = new Date();
   document.getElementById('dash-date').textContent = now.toLocaleDateString('en-KE', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  // Backup reminder
+  const lastBackup = localStorage.getItem('last_backup');
+  const daysSince = lastBackup ? Math.floor((Date.now() - new Date(lastBackup)) / (1000*60*60*24)) : 999;
+  const reminderEl = document.getElementById('backup-reminder');
+  if (reminderEl) {
+    if (daysSince >= 7) {
+      reminderEl.style.display = 'flex';
+      reminderEl.innerHTML = `<span>⚠️ ${daysSince >= 999 ? 'No backup yet!' : 'Last backup ' + daysSince + ' days ago.'} Back up your data.</span><button onclick="exportBackup()" style="background:#0f0f0f;border:none;color:var(--warning);padding:5px 10px;border-radius:6px;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;cursor:pointer;white-space:nowrap;">Backup Now</button>`;
+    } else {
+      reminderEl.style.display = 'none';
+    }
+  }
 
   const occupied = stalls.filter(s => s.tenant).length;
   const totalRent = stalls.filter(s => s.tenant).reduce((a, s) => a + s.rent, 0);
@@ -1281,8 +1309,75 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 });
 
+// ─── BACKUP & RESTORE ─────────────────────────────────────────
+function exportBackup() {
+  const backup = {
+    version: '1.0',
+    exportedAt: new Date().toISOString(),
+    stalls,
+    payments,
+    utilities,
+    maintenance
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `stalltrack-backup-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  // Save last backup time
+  localStorage.setItem('last_backup', new Date().toISOString());
+  renderSettings();
+  alert('✅ Backup downloaded! Save it to Google Drive or WhatsApp it to yourself.');
+}
+
+function importBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      // Validate it's a StallTrack backup
+      if (!data.stalls || !data.payments) {
+        alert('❌ Invalid backup file. Please select a StallTrack backup (.json).');
+        return;
+      }
+      if (!confirm(`⚠️ This will REPLACE all your current data with the backup from ${data.exportedAt ? new Date(data.exportedAt).toLocaleDateString() : 'unknown date'}.\n\nAre you sure?`)) return;
+      stalls = data.stalls || defaultStalls;
+      payments = data.payments || [];
+      utilities = data.utilities || [];
+      maintenance = data.maintenance || [];
+      saveAll();
+      renderAll();
+      renderSettings();
+      alert('✅ Backup restored successfully! All your data is back.');
+    } catch {
+      alert('❌ Could not read backup file. Make sure it is a valid StallTrack backup.');
+    }
+  };
+  reader.readAsText(file);
+  // Reset input so same file can be re-selected
+  event.target.value = '';
+}
+
 // ─── SETTINGS ─────────────────────────────────────────────────
 function renderSettings() {
+  // Last backup status
+  const lastBackup = localStorage.getItem('last_backup');
+  const backupEl = document.getElementById('backup-last');
+  if (backupEl) {
+    if (lastBackup) {
+      const d = new Date(lastBackup);
+      const daysSince = Math.floor((Date.now() - d) / (1000*60*60*24));
+      const color = daysSince > 7 ? 'var(--warning)' : 'var(--success)';
+      backupEl.innerHTML = `<span style="color:${color};">Last backup: ${d.toLocaleDateString('en-KE')} (${daysSince === 0 ? 'today' : daysSince + ' day(s) ago'})</span>`;
+    } else {
+      backupEl.innerHTML = `<span style="color:var(--danger);">⚠️ No backup made yet — do one now!</span>`;
+    }
+  }
   const sq = getSecurityQ();
   const statusEl = document.getElementById('security-q-status');
   if (sq) {
