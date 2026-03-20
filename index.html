@@ -330,6 +330,15 @@
 </head>
 <body>
 
+<!-- LOADING OVERLAY -->
+<div id="db-loading" style="display:none;position:fixed;inset:0;background:rgba(15,15,15,0.95);z-index:999;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+  <div style="font-size:36px;">🏪</div>
+  <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--accent);">StallTrack</div>
+  <div id="db-loading-msg" style="color:var(--text2);font-size:13px;">Connecting...</div>
+  <div style="width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+</div>
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="login-box">
@@ -782,7 +791,24 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+// ─── FIREBASE SETUP ──────────────────────────────────────────
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBaCXBRwSSfjpi0Qfir7dMpleGlzGLoaEc",
+  authDomain: "stalltrack-958e1.firebaseapp.com",
+  projectId: "stalltrack-958e1",
+  storageBucket: "stalltrack-958e1.firebasestorage.app",
+  messagingSenderId: "300522881750",
+  appId: "1:300522881750:web:b63660cf05793291c0ff77"
+};
+
+const fireApp = initializeApp(firebaseConfig);
+const db = getFirestore(fireApp);
+const DB_ID = 'owner';
+
 // ─── STATE ───────────────────────────────────────────────────
 function getPassword() { return localStorage.getItem('app_password') || 'admin1234'; }
 function getSecurityQ() { try { return JSON.parse(localStorage.getItem('app_security')) || null; } catch { return null; } }
@@ -799,27 +825,102 @@ const defaultStalls = [
   { id: 6, name: 'Stall 6', rent: 6000, tenant: null, tenancyHistory: [] },
 ];
 
+let stalls = defaultStalls;
+let payments = [];
+let utilities = [];
+let maintenance = [];
+let dbLoaded = false;
+
+// Show loading overlay
+function showLoading(msg) {
+  document.getElementById('db-loading').style.display = 'flex';
+  document.getElementById('db-loading-msg').textContent = msg || 'Loading...';
+}
+function hideLoading() {
+  document.getElementById('db-loading').style.display = 'none';
+}
+
+// ─── FIREBASE LOAD/SAVE ───────────────────────────────────────
+async function loadFromDB() {
+  showLoading('Connecting to database...');
+  try {
+    const snap = await getDoc(doc(db, 'stalltrack', DB_ID));
+    if (snap.exists()) {
+      const data = snap.data();
+      stalls = data.stalls || defaultStalls;
+      payments = data.payments || [];
+      utilities = data.utilities || [];
+      maintenance = data.maintenance || [];
+    } else {
+      // First time — save defaults
+      await saveToDB();
+    }
+    dbLoaded = true;
+    window.payments = payments;
+  } catch(e) {
+    console.error('DB load error:', e);
+    // Fall back to localStorage if offline
+    stalls = load('stalls', defaultStalls);
+    payments = load('payments', []);
+    utilities = load('utilities', []);
+    maintenance = load('maintenance', []);
+    dbLoaded = true;
+    showToast('⚠️ Offline mode — using local data');
+  }
+  hideLoading();
+}
+
+async function saveToDB() {
+  // Also save locally as backup
+  save('stalls', stalls);
+  save('payments', payments);
+  save('utilities', utilities);
+  save('maintenance', maintenance);
+  try {
+    await setDoc(doc(db, 'stalltrack', DB_ID), {
+      stalls, payments, utilities, maintenance,
+      updatedAt: new Date().toISOString()
+    });
+  } catch(e) {
+    console.error('DB save error:', e);
+    showToast('⚠️ Saved locally — will sync when online');
+  }
+}
+
+async function saveAll() {
+  window.payments = payments;
+  await saveToDB();
+}
+
+// Local fallback helpers
 function load(key, def) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; }
 }
 function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
-let stalls = load('stalls', defaultStalls);
-let payments = load('payments', []);
-let utilities = load('utilities', []);
-let maintenance = load('maintenance', []);
-
-function saveAll() {
-  save('stalls', stalls);
-  save('payments', payments);
-  save('utilities', utilities);
-  save('maintenance', maintenance);
+// Toast notification
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;z-index:999;transition:opacity 0.3s;white-space:nowrap;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  setTimeout(() => { t.style.opacity = '0'; }, 3000);
 }
 
+// Make all functions globally accessible
+window.saveAll = saveAll;
+window.showToast = showToast;
+
 // ─── AUTH ─────────────────────────────────────────────────────
-function doLogin() {
+async function doLogin() {
   const pw = document.getElementById('login-password').value;
   if (pw === getPassword()) {
+    await loadFromDB();
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     renderAll();
@@ -832,6 +933,8 @@ function doLogout() {
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('login-password').value = '';
 }
+window.doLogin = doLogin;
+window.doLogout = doLogout;
 
 // ─── NAV ──────────────────────────────────────────────────────
 function showPage(name, el) {
@@ -1447,6 +1550,36 @@ function doChangePassword() {
   alert('✅ Password changed successfully! Use your new password next time you log in.');
 }
 
+// ─── EXPOSE ALL FUNCTIONS TO WINDOW (required for type=module) ─
+window.showPage = showPage;
+window.openModal = openModal;
+window.closeModal = closeModal;
+window.renderAll = renderAll;
+window.renderSettings = renderSettings;
+window.openStallDetail = openStallDetail;
+window.openAddTenant = openAddTenant;
+window.openEditTenant = openEditTenant;
+window.saveTenant = saveTenant;
+window.openMoveOut = openMoveOut;
+window.confirmMoveOut = confirmMoveOut;
+window.openAddPayment = openAddPayment;
+window.savePayment = savePayment;
+window.showReceipt = showReceipt;
+window.shareReceipt = shareReceipt;
+window.openAddUtility = openAddUtility;
+window.saveUtility = saveUtility;
+window.openAddMaintenance = openAddMaintenance;
+window.saveMaintenance = saveMaintenance;
+window.toggleMaintStatus = toggleMaintStatus;
+window.exportBackup = exportBackup;
+window.importBackup = importBackup;
+window.openSetSecurityQ = openSetSecurityQ;
+window.saveSecurityQuestion = saveSecurityQuestion;
+window.openChangePassword = openChangePassword;
+window.verifySQAnswer = verifySQAnswer;
+window.doChangePassword = doChangePassword;
+window.payments = payments;
+
 // ─── PWA INSTALL ──────────────────────────────────────────────
 let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -1466,6 +1599,8 @@ function installApp() {
     document.getElementById('install-banner').style.display = 'none';
   });
 }
+window.installApp = installApp;
+window.renderSettings = renderSettings;
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
