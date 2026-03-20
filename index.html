@@ -222,6 +222,7 @@
   .badge-overdue { background: rgba(240,96,96,0.15); color: var(--danger); }
   .badge-paid { background: rgba(96,240,160,0.15); color: var(--success); }
   .badge-pending { background: rgba(240,184,96,0.15); color: var(--warning); }
+  .badge-booked { background: rgba(240,184,96,0.15); color: var(--warning); }
   .stall-row { display: flex; justify-content: space-between; font-size: 13px; color: var(--text2); margin-top: 4px; }
   .stall-row span:last-child { color: var(--text); font-family: 'DM Mono', monospace; }
 
@@ -422,6 +423,21 @@
       <div id="maintenance-list"></div>
     </div>
 
+    <!-- REPORTS -->
+    <div class="page" id="page-reports">
+      <div class="page-title">Reports</div>
+      <div class="page-sub">Monthly summaries & exports</div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Select Month</label>
+        <input type="month" id="report-month" onchange="renderReport()">
+      </div>
+      <div id="report-content"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-secondary" style="flex:1;" onclick="exportReportPDF()">📄 Export PDF</button>
+        <button class="btn btn-secondary" style="flex:1;" onclick="exportReportExcel()">📊 Export Excel</button>
+      </div>
+    </div>
+
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
       <div class="page-title">Settings</div>
@@ -459,7 +475,7 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
         <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:12px;">ℹ️ App Info</div>
         <div class="stall-row"><span>App</span><span>StallTrack</span></div>
-        <div class="stall-row"><span>Version</span><span>1.1.0</span></div>
+        <div class="stall-row"><span>Version</span><span>1.2.0</span></div>
         <div class="stall-row"><span>Data Storage</span><span style="color:var(--success);">☁️ Firebase (Google Cloud)</span></div>
         <div class="stall-row"><span>Auto Backup</span><span style="color:var(--success);">✅ Every change</span></div>
         <div class="stall-row"><span>Hosted On</span><span>GitHub Pages</span></div>
@@ -488,11 +504,47 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
       Repairs
     </button>
+    <button class="nav-item" onclick="showPage('reports',this);renderReport()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      Reports
+    </button>
     <button class="nav-item" onclick="showPage('settings',this);renderSettings()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Settings
     </button>
   </nav>
+</div>
+
+<!-- RENAME STALL MODAL -->
+<div class="modal-overlay" id="modal-rename">
+  <div class="modal">
+    <div class="modal-title">✏️ Rename Stall</div>
+    <div class="form-group">
+      <label>Stall Name</label>
+      <input type="text" id="rename-input" placeholder="e.g. Shop A, Corner Stall...">
+    </div>
+    <input type="hidden" id="rename-stall-id">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-rename')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRename()">Save Name</button>
+    </div>
+  </div>
+</div>
+
+<!-- STALL NOTES MODAL -->
+<div class="modal-overlay" id="modal-notes">
+  <div class="modal">
+    <div class="modal-title" id="modal-notes-title">📝 Stall Notes</div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="notes-input" placeholder="e.g. Has a broken window, faces the road, corner unit..." style="min-height:120px;"></textarea>
+    </div>
+    <input type="hidden" id="notes-stall-id">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-notes')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveNotes()">Save Notes</button>
+    </div>
+  </div>
 </div>
 
 <!-- STALL DETAIL MODAL -->
@@ -520,8 +572,19 @@
       <input type="tel" id="tenant-phone" placeholder="07XX XXX XXX">
     </div>
     <div class="form-group">
+      <label>Status</label>
+      <select id="tenant-status" onchange="toggleMoveInFields()">
+        <option value="Occupied">🟢 Moved In — Currently Occupied</option>
+        <option value="Booked">🟡 Booked — Paid but Not Moved In Yet</option>
+      </select>
+    </div>
+    <div id="movein-date-group" class="form-group">
       <label>Move-in Date</label>
       <input type="date" id="tenant-movein">
+    </div>
+    <div id="expected-movein-group" class="form-group" style="display:none;">
+      <label>Expected Move-in Date</label>
+      <input type="date" id="tenant-expected-movein">
     </div>
     <div class="form-group">
       <label>Rent Due Day (1–28)</label>
@@ -1035,12 +1098,13 @@ function renderDashboard() {
     }
   }
 
-  const occupied = stalls.filter(s => s.tenant).length;
-  const totalRent = stalls.filter(s => s.tenant).reduce((a, s) => a + s.rent, 0);
+  const occupied = stalls.filter(s => s.tenant && s.tenant.status !== 'Booked').length;
+  const booked = stalls.filter(s => s.tenant && s.tenant.status === 'Booked').length;
+  const totalRent = stalls.filter(s => s.tenant && s.tenant.status !== 'Booked').reduce((a, s) => a + s.rent, 0);
   const thisMonth = now.toISOString().slice(0, 7);
   const collectedThisMonth = payments.filter(p => p.month === thisMonth).reduce((a, p) => a + p.amount, 0);
   const overdueCount = stalls.filter(s => {
-    if (!s.tenant) return false;
+    if (!s.tenant || s.tenant.status === 'Booked') return false;
     const paid = payments.some(p => p.stallId === s.id && p.month === thisMonth);
     return !paid;
   }).length;
@@ -1050,7 +1114,7 @@ function renderDashboard() {
 
   document.getElementById('stat-grid').innerHTML = `
     <div class="stat-card"><div class="stat-label">Occupied Stalls</div><div class="stat-value accent">${occupied}/6</div></div>
-    <div class="stat-card"><div class="stat-label">Expected Rent</div><div class="stat-value">KSh ${totalRent.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">Booked (Pending)</div><div class="stat-value ${booked > 0 ? 'warning' : 'accent'}">${booked} stall${booked !== 1 ? 's' : ''}</div></div>
     <div class="stat-card"><div class="stat-label">Collected This Month</div><div class="stat-value accent">KSh ${collectedThisMonth.toLocaleString()}</div></div>
     <div class="stat-card"><div class="stat-label">Overdue This Month</div><div class="stat-value ${overdueCount > 0 ? 'danger' : 'accent'}">${overdueCount} stall${overdueCount !== 1 ? 's' : ''}</div></div>
     <div class="stat-card"><div class="stat-label">Deposits Collected</div><div class="stat-value accent">KSh ${depositsCollected.toLocaleString()}</div></div>
@@ -1059,18 +1123,24 @@ function renderDashboard() {
 
   const thisMonth2 = now.toISOString().slice(0, 7);
   document.getElementById('stalls-overview').innerHTML = stalls.map(s => {
-    const paid = s.tenant ? payments.some(p => p.stallId === s.id && p.month === thisMonth2) : false;
+    const isBooked = s.tenant && s.tenant.status === 'Booked';
+    const paid = s.tenant && !isBooked ? payments.some(p => p.stallId === s.id && p.month === thisMonth2) : false;
+    let badge = '';
+    if (!s.tenant) badge = `<span class="badge badge-vacant">Vacant</span>`;
+    else if (isBooked) badge = `<span class="badge badge-booked">🟡 Booked</span>`;
+    else badge = `<span class="badge ${paid ? 'badge-paid' : 'badge-overdue'}">${paid ? 'Paid' : 'Overdue'}</span>`;
     return `<div class="stall-card ${!s.tenant ? 'vacant' : ''}" onclick="openStallDetail(${s.id})">
       <div class="stall-header">
         <div>
           <div class="stall-name">${s.name}</div>
           <div class="stall-num">KSh ${s.rent.toLocaleString()}/mo</div>
         </div>
-        ${s.tenant
-          ? `<span class="badge ${paid ? 'badge-paid' : 'badge-overdue'}">${paid ? 'Paid' : 'Overdue'}</span>`
-          : `<span class="badge badge-vacant">Vacant</span>`}
+        ${badge}
       </div>
-      ${s.tenant ? `<div class="stall-row"><span>Tenant</span><span>${s.tenant.name}</span></div>` : '<div class="stall-row" style="color:var(--text3)">No tenant assigned</div>'}
+      ${s.tenant
+        ? `<div class="stall-row"><span>Tenant</span><span>${s.tenant.name}</span></div>
+           ${isBooked ? `<div class="stall-row"><span>Expected Move-in</span><span>${s.tenant.expectedMoveIn || 'TBD'}</span></div>` : ''}`
+        : '<div class="stall-row" style="color:var(--text3)">No tenant assigned</div>'}
     </div>`;
   }).join('');
 }
@@ -1078,19 +1148,24 @@ function renderDashboard() {
 // ─── STALLS PAGE ──────────────────────────────────────────────
 function renderStalls() {
   document.getElementById('stalls-list').innerHTML = stalls.map(s => {
+    const isBooked = s.tenant && s.tenant.status === 'Booked';
+    let badgeClass = s.tenant ? (isBooked ? 'badge-booked' : 'badge-occupied') : 'badge-vacant';
+    let badgeText = s.tenant ? (isBooked ? '🟡 Booked' : '🟢 Occupied') : 'Vacant';
     return `<div class="stall-card ${!s.tenant ? 'vacant' : ''}" onclick="openStallDetail(${s.id})">
       <div class="stall-header">
         <div>
           <div class="stall-name">${s.name}</div>
           <div class="stall-num">KSh ${s.rent.toLocaleString()}/month</div>
         </div>
-        <span class="badge ${s.tenant ? 'badge-occupied' : 'badge-vacant'}">${s.tenant ? 'Occupied' : 'Vacant'}</span>
+        <span class="badge ${badgeClass}">${badgeText}</span>
       </div>
       ${s.tenant ? `
         <div class="stall-row"><span>Tenant</span><span>${s.tenant.name}</span></div>
         <div class="stall-row"><span>Phone</span><span>${s.tenant.phone}</span></div>
-        <div class="stall-row"><span>Due Day</span><span>${s.tenant.dueDay}${['st','nd','rd'][s.tenant.dueDay-1]||'th'} of month</span></div>
-        <div class="stall-row"><span>Move-in</span><span>${s.tenant.moveIn}</span></div>
+        ${isBooked
+          ? `<div class="stall-row"><span>Expected Move-in</span><span>${s.tenant.expectedMoveIn || 'TBD'}</span></div>`
+          : `<div class="stall-row"><span>Due Day</span><span>${s.tenant.dueDay}${['st','nd','rd'][s.tenant.dueDay-1]||'th'} of month</span></div>
+             <div class="stall-row"><span>Move-in</span><span>${s.tenant.moveIn}</span></div>`}
         <div class="stall-row"><span>Deposit</span><span><span class="badge ${s.tenant.depositStatus==='Paid'?'badge-paid':'badge-pending'}">${s.tenant.depositStatus||'Unpaid'}</span></span></div>
       ` : '<div class="stall-row" style="color:var(--text3);margin-top:4px;">Click to assign a tenant</div>'}
     </div>`;
@@ -1105,15 +1180,22 @@ function openStallDetail(stallId) {
   const paid = stallPayments.some(p => p.month === thisMonth);
 
   let html = `<div class="stall-row" style="margin-bottom:12px;font-size:15px;"><span style="color:var(--text2)">Monthly Rent</span><span style="color:var(--accent);font-family:'DM Mono',monospace;font-size:18px;">KSh ${s.rent.toLocaleString()}</span></div>`;
+  if (s.notes) {
+    html += `<div style="background:rgba(200,240,96,0.06);border:1px solid rgba(200,240,96,0.15);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text2);margin-bottom:12px;">📝 ${s.notes}</div>`;
+  }
 
   if (s.tenant) {
+    const isBooked = s.tenant.status === 'Booked';
     html += `
+      <div class="stall-row"><span>Status</span><span><span class="badge ${isBooked ? 'badge-booked' : 'badge-occupied'}">${isBooked ? '🟡 Booked' : '🟢 Occupied'}</span></span></div>
       <div class="stall-row"><span>Tenant</span><span>${s.tenant.name}</span></div>
       <div class="stall-row"><span>Phone</span><span>${s.tenant.phone}</span></div>
-      <div class="stall-row"><span>Move-in</span><span>${s.tenant.moveIn}</span></div>
-      <div class="stall-row"><span>Rent Due</span><span>${s.tenant.dueDay}${['st','nd','rd'][s.tenant.dueDay-1]||'th'} every month</span></div>
-      <div class="stall-row" style="margin-top:8px;"><span>This Month</span><span><span class="badge ${paid ? 'badge-paid' : 'badge-overdue'}">${paid ? '✓ Paid' : '✗ Overdue'}</span></span></div>
-      <div class="stall-row" style="margin-top:4px;"><span>Deposit</span><span><span class="badge ${s.tenant.depositStatus==='Paid'?'badge-paid':'badge-overdue'}">${s.tenant.depositStatus==='Paid' ? '✓ KSh '+(s.tenant.deposit||6500).toLocaleString() : '✗ Unpaid — KSh '+(s.tenant.deposit||6500).toLocaleString()}</span></span></div>
+      ${isBooked
+        ? `<div class="stall-row"><span>Expected Move-in</span><span>${s.tenant.expectedMoveIn || 'TBD'}</span></div>`
+        : `<div class="stall-row"><span>Move-in</span><span>${s.tenant.moveIn}</span></div>
+           <div class="stall-row"><span>Rent Due</span><span>${s.tenant.dueDay}${['st','nd','rd'][s.tenant.dueDay-1]||'th'} every month</span></div>`}
+      <div class="stall-row" style="margin-top:8px;"><span>This Month</span><span><span class="badge ${isBooked ? 'badge-booked' : paid ? 'badge-paid' : 'badge-overdue'}">${isBooked ? 'Not Active Yet' : paid ? '✓ Paid' : '✗ Overdue'}</span></span></div>
+      <div class="stall-row" style="margin-top:4px;"><span>Deposit</span><span><span class="badge ${s.tenant.depositStatus==='Paid'?'badge-paid':'badge-overdue'}">${s.tenant.depositStatus==='Paid' ? '✓ KSh '+(s.tenant.deposit||0).toLocaleString() : '✗ Unpaid — KSh '+(s.tenant.deposit||0).toLocaleString()}</span></span></div>
       ${s.tenant.depositStatus==='Paid' && s.tenant.depositDate ? `<div class="stall-row" style="font-size:11px;color:var(--text3);"><span>Deposit Date</span><span>${s.tenant.depositDate}${s.tenant.depositRef?' · '+s.tenant.depositRef:''}</span></div>` : ''}
       <hr class="divider">
       <div style="font-family:'Syne',sans-serif;font-weight:700;margin-bottom:10px;">Payment History</div>
@@ -1157,10 +1239,15 @@ function openStallDetail(stallId) {
   document.getElementById('modal-stall-content').innerHTML = html;
 
   if (s.tenant) {
+    const isBooked = s.tenant.status === 'Booked';
     document.querySelector('#modal-stall .modal-actions').innerHTML = `
       <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-stall')">Close</button>
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-stall');openRename(${stallId})">✏️</button>
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-stall');openNotes(${stallId})">📝</button>
       <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-stall');openEditTenant(${stallId})">Edit</button>
-      <button class="btn btn-danger btn-sm" onclick="closeModal('modal-stall');openMoveOut(${stallId})">Move Out</button>
+      ${isBooked
+        ? `<button class="btn btn-success btn-sm" onclick="closeModal('modal-stall');confirmMoveIn(${stallId})">✅ Move-in</button>`
+        : `<button class="btn btn-danger btn-sm" onclick="closeModal('modal-stall');openMoveOut(${stallId})">Move Out</button>`}
       <button class="btn btn-primary btn-sm" onclick="closeModal('modal-stall');openAddPayment(${stallId})">+ Pay</button>
     `;
   } else {
@@ -1180,12 +1267,20 @@ function openStallDetail(stallId) {
       document.getElementById('modal-stall-content').innerHTML += histHtml;
     }
     document.querySelector('#modal-stall .modal-actions').innerHTML = `
-      <button class="btn btn-secondary" onclick="closeModal('modal-stall')">Close</button>
-      <button class="btn btn-primary" onclick="closeModal('modal-stall');openAddTenant(${stallId})">Assign New Tenant</button>
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-stall')">Close</button>
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-stall');openRename(${stallId})">✏️ Rename</button>
+      <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-stall');openNotes(${stallId})">📝 Notes</button>
+      <button class="btn btn-primary btn-sm" onclick="closeModal('modal-stall');openAddTenant(${stallId})">Assign New Tenant</button>
     `;
   }
 
   openModal('modal-stall');
+}
+
+function toggleMoveInFields() {
+  const status = document.getElementById('tenant-status').value;
+  document.getElementById('movein-date-group').style.display = status === 'Occupied' ? 'block' : 'none';
+  document.getElementById('expected-movein-group').style.display = status === 'Booked' ? 'block' : 'none';
 }
 
 // ─── TENANT ───────────────────────────────────────────────────
@@ -1193,9 +1288,12 @@ function openAddTenant(stallId) {
   document.getElementById('modal-tenant-title').textContent = 'Assign Tenant';
   document.getElementById('tenant-stall-id').value = stallId;
   const s = stalls.find(x => x.id === stallId);
+  document.getElementById('tenant-status').value = 'Occupied';
+  toggleMoveInFields();
   document.getElementById('tenant-name').value = '';
   document.getElementById('tenant-phone').value = '';
   document.getElementById('tenant-movein').value = new Date().toISOString().slice(0,10);
+  document.getElementById('tenant-expected-movein').value = '';
   document.getElementById('tenant-dueday').value = '';
   document.getElementById('tenant-rent').value = s.rent;
   document.getElementById('tenant-deposit').value = 6500;
@@ -1210,9 +1308,12 @@ function openEditTenant(stallId) {
   if (!s.tenant) return;
   document.getElementById('modal-tenant-title').textContent = 'Edit Tenant — ' + s.name;
   document.getElementById('tenant-stall-id').value = stallId;
+  document.getElementById('tenant-status').value = s.tenant.status || 'Occupied';
+  toggleMoveInFields();
   document.getElementById('tenant-name').value = s.tenant.name;
   document.getElementById('tenant-phone').value = s.tenant.phone;
-  document.getElementById('tenant-movein').value = s.tenant.moveIn;
+  document.getElementById('tenant-movein').value = s.tenant.moveIn || '';
+  document.getElementById('tenant-expected-movein').value = s.tenant.expectedMoveIn || '';
   document.getElementById('tenant-dueday').value = s.tenant.dueDay;
   document.getElementById('tenant-rent').value = s.rent;
   document.getElementById('tenant-deposit').value = s.tenant.deposit || 6500;
@@ -1222,25 +1323,45 @@ function openEditTenant(stallId) {
   openModal('modal-tenant');
 }
 
-function saveTenant() {
+async function saveTenant() {
   const stallId = parseInt(document.getElementById('tenant-stall-id').value);
   const name = document.getElementById('tenant-name').value.trim();
   const phone = document.getElementById('tenant-phone').value.trim();
-  const moveIn = document.getElementById('tenant-movein').value;
   const dueDay = parseInt(document.getElementById('tenant-dueday').value);
   const rent = parseInt(document.getElementById('tenant-rent').value);
   const deposit = parseInt(document.getElementById('tenant-deposit').value) || 6500;
   const depositStatus = document.getElementById('tenant-deposit-status').value;
   const depositDate = document.getElementById('tenant-deposit-date').value;
   const depositRef = document.getElementById('tenant-deposit-ref').value.trim();
-  if (!name || !phone || !moveIn || !dueDay || !rent) { alert('Please fill all fields.'); return; }
+  const status = document.getElementById('tenant-status').value;
+  const moveIn = status === 'Occupied' ? document.getElementById('tenant-movein').value : null;
+  const expectedMoveIn = status === 'Booked' ? document.getElementById('tenant-expected-movein').value : null;
+  if (!name || !phone || !dueDay || !rent) { alert('Please fill all fields.'); return; }
+  if (status === 'Occupied' && !moveIn) { alert('Please enter a move-in date.'); return; }
   const idx = stalls.findIndex(x => x.id === stallId);
-  const tenantId = Date.now();
-  stalls[idx].tenant = { id: tenantId, name, phone, moveIn, dueDay, deposit, depositStatus, depositDate, depositRef };
+  const tenantId = stalls[idx].tenant ? stalls[idx].tenant.id : Date.now();
+  stalls[idx].tenant = { id: tenantId, name, phone, moveIn, expectedMoveIn, status, dueDay, deposit, depositStatus, depositDate, depositRef };
   stalls[idx].rent = rent;
   if (!stalls[idx].tenancyHistory) stalls[idx].tenancyHistory = [];
   saveAll(); renderAll();
   closeModal('modal-tenant');
+}
+
+// ─── CONFIRM MOVE-IN (from Booked → Occupied) ─────────────────
+async function confirmMoveIn(stallId) {
+  const s = stalls.find(x => x.id === stallId);
+  if (!s || !s.tenant) return;
+  const today = new Date().toISOString().slice(0,10);
+  const moveInDate = prompt(`Confirm actual move-in date for ${s.tenant.name}:`, today);
+  if (!moveInDate) return;
+  const idx = stalls.findIndex(x => x.id === stallId);
+  stalls[idx].tenant.status = 'Occupied';
+  stalls[idx].tenant.moveIn = moveInDate;
+  stalls[idx].tenant.expectedMoveIn = null;
+  await saveAll();
+  renderAll();
+  showToast(`✅ ${s.tenant.name} confirmed as moved in!`);
+  setTimeout(() => openStallDetail(stallId), 300);
 }
 
 // ─── MOVE OUT ─────────────────────────────────────────────────
@@ -1537,6 +1658,192 @@ document.querySelectorAll('.modal-overlay').forEach(overlay => {
   overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
 });
 
+// ─── RENAME STALL ─────────────────────────────────────────────
+function openRename(stallId) {
+  const s = stalls.find(x => x.id === stallId);
+  document.getElementById('rename-stall-id').value = stallId;
+  document.getElementById('rename-input').value = s.name;
+  openModal('modal-rename');
+}
+async function saveRename() {
+  const stallId = parseInt(document.getElementById('rename-stall-id').value);
+  const name = document.getElementById('rename-input').value.trim();
+  if (!name) { alert('Please enter a name.'); return; }
+  const idx = stalls.findIndex(x => x.id === stallId);
+  stalls[idx].name = name;
+  await saveAll(); renderAll();
+  closeModal('modal-rename');
+  showToast(`✅ Renamed to "${name}"`);
+}
+
+// ─── STALL NOTES ──────────────────────────────────────────────
+function openNotes(stallId) {
+  const s = stalls.find(x => x.id === stallId);
+  document.getElementById('notes-stall-id').value = stallId;
+  document.getElementById('modal-notes-title').textContent = `📝 Notes — ${s.name}`;
+  document.getElementById('notes-input').value = s.notes || '';
+  openModal('modal-notes');
+}
+async function saveNotes() {
+  const stallId = parseInt(document.getElementById('notes-stall-id').value);
+  const notes = document.getElementById('notes-input').value.trim();
+  const idx = stalls.findIndex(x => x.id === stallId);
+  stalls[idx].notes = notes;
+  await saveAll(); renderAll();
+  closeModal('modal-notes');
+  showToast('✅ Notes saved!');
+}
+
+// ─── REPORTS ──────────────────────────────────────────────────
+function renderReport() {
+  const monthInput = document.getElementById('report-month');
+  if (!monthInput.value) {
+    monthInput.value = new Date().toISOString().slice(0, 7);
+  }
+  const month = monthInput.value;
+  const [year, mon] = month.split('-');
+  const monthName = new Date(year, mon - 1).toLocaleDateString('en-KE', { month: 'long', year: 'numeric' });
+
+  const monthPayments = payments.filter(p => p.month === month);
+  const totalCollected = monthPayments.reduce((a, p) => a + p.amount, 0);
+  const monthUtils = utilities.filter(u => u.date && u.date.startsWith(month));
+  const totalUtils = monthUtils.reduce((a, u) => a + u.amount, 0);
+
+  let html = `
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:17px;margin-bottom:14px;">📊 ${monthName}</div>
+    <div class="stat-grid" style="margin-bottom:16px;">
+      <div class="stat-card"><div class="stat-label">Total Collected</div><div class="stat-value accent">KSh ${totalCollected.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="stat-label">Utility Bills</div><div class="stat-value warning">KSh ${totalUtils.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="stat-label">Payments Made</div><div class="stat-value">${monthPayments.length}</div></div>
+      <div class="stat-card"><div class="stat-label">Net Income</div><div class="stat-value accent">KSh ${(totalCollected - totalUtils).toLocaleString()}</div></div>
+    </div>
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin-bottom:10px;">Stall Breakdown</div>
+  `;
+
+  stalls.forEach(s => {
+    const stallPays = monthPayments.filter(p => p.stallId === s.id);
+    const stallTotal = stallPays.reduce((a, p) => a + p.amount, 0);
+    const paid = stallTotal > 0;
+    html += `
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+          <span style="font-weight:600;">${s.name}</span>
+          <span class="badge ${paid ? 'badge-paid' : s.tenant ? 'badge-overdue' : 'badge-vacant'}">${paid ? '✓ Paid' : s.tenant ? 'Overdue' : 'Vacant'}</span>
+        </div>
+        <div style="font-size:12px;color:var(--text2);">${s.tenant ? s.tenant.name : 'No tenant'} · Expected: KSh ${s.rent.toLocaleString()}</div>
+        ${stallPays.length > 0 ? stallPays.map(p => `
+          <div style="font-size:12px;margin-top:4px;color:var(--text);display:flex;justify-content:space-between;">
+            <span>${p.method} ${p.ref ? '· '+p.ref : ''}</span>
+            <span style="font-family:'DM Mono',monospace;color:var(--accent);">KSh ${p.amount.toLocaleString()}</span>
+          </div>`).join('') : `<div style="font-size:12px;color:var(--text3);margin-top:4px;">No payment recorded</div>`}
+      </div>`;
+  });
+
+  if (monthUtils.length > 0) {
+    html += `<div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin:16px 0 10px;">Utility Bills</div>`;
+    monthUtils.forEach(u => {
+      const s = stalls.find(x => x.id === u.stallId);
+      html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="font-size:13px;">${u.type} ${u.type==='Water'?'💧':'⚡'} — ${s?s.name:''}</div><div style="font-size:11px;color:var(--text2);">${u.date} · <span class="badge ${u.status==='Paid'?'badge-paid':'badge-overdue'}">${u.status}</span></div></div>
+        <div style="font-family:'DM Mono',monospace;color:var(--warning);">KSh ${u.amount.toLocaleString()}</div>
+      </div>`;
+    });
+  }
+
+  document.getElementById('report-content').innerHTML = html;
+}
+
+// ─── EXPORT PDF ───────────────────────────────────────────────
+function exportReportPDF() {
+  const month = document.getElementById('report-month').value || new Date().toISOString().slice(0,7);
+  const [year, mon] = month.split('-');
+  const monthName = new Date(year, mon-1).toLocaleDateString('en-KE', { month:'long', year:'numeric' });
+  const monthPayments = payments.filter(p => p.month === month);
+  const totalCollected = monthPayments.reduce((a,p) => a+p.amount, 0);
+  const monthUtils = utilities.filter(u => u.date && u.date.startsWith(month));
+  const totalUtils = monthUtils.reduce((a,u) => a+u.amount, 0);
+
+  let rows = stalls.map(s => {
+    const pays = monthPayments.filter(p => p.stallId === s.id);
+    const total = pays.reduce((a,p) => a+p.amount, 0);
+    return `<tr>
+      <td style="padding:8px;border:1px solid #ddd;">${s.name}</td>
+      <td style="padding:8px;border:1px solid #ddd;">${s.tenant ? s.tenant.name : '—'}</td>
+      <td style="padding:8px;border:1px solid #ddd;">KSh ${s.rent.toLocaleString()}</td>
+      <td style="padding:8px;border:1px solid #ddd;">${pays.map(p=>p.method).join(', ')||'—'}</td>
+      <td style="padding:8px;border:1px solid #ddd;">${pays.map(p=>p.ref||'').join(', ')||'—'}</td>
+      <td style="padding:8px;border:1px solid #ddd;color:${total>0?'green':'red'};font-weight:bold;">KSh ${total.toLocaleString()}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><title>StallTrack Report — ${monthName}</title>
+  <style>body{font-family:Arial,sans-serif;padding:30px;color:#111;}h1{color:#111;}table{width:100%;border-collapse:collapse;margin-top:16px;}th{background:#0f0f0f;color:#c8f060;padding:10px 8px;text-align:left;border:1px solid #ddd;}.summary{display:flex;gap:20px;margin:16px 0;}.box{background:#f5f5f5;border-radius:8px;padding:12px 16px;flex:1;}.box-label{font-size:11px;color:#666;text-transform:uppercase;}.box-value{font-size:20px;font-weight:bold;color:#111;}</style></head>
+  <body>
+    <h1>🏪 StallTrack — Rent Report</h1>
+    <p style="color:#666;">${monthName} · Generated ${new Date().toLocaleDateString('en-KE')}</p>
+    <div class="summary">
+      <div class="box"><div class="box-label">Total Collected</div><div class="box-value" style="color:green;">KSh ${totalCollected.toLocaleString()}</div></div>
+      <div class="box"><div class="box-label">Utility Bills</div><div class="box-value" style="color:orange;">KSh ${totalUtils.toLocaleString()}</div></div>
+      <div class="box"><div class="box-label">Net Income</div><div class="box-value">KSh ${(totalCollected-totalUtils).toLocaleString()}</div></div>
+    </div>
+    <table><thead><tr><th>Stall</th><th>Tenant</th><th>Expected</th><th>Method</th><th>Ref No.</th><th>Paid</th></tr></thead><tbody>${rows}</tbody></table>
+  </body></html>`;
+
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `StallTrack-Report-${month}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📄 Report downloaded — open in browser to print as PDF');
+}
+
+// ─── EXPORT EXCEL ─────────────────────────────────────────────
+function exportReportExcel() {
+  const month = document.getElementById('report-month').value || new Date().toISOString().slice(0,7);
+  const [year, mon] = month.split('-');
+  const monthName = new Date(year, mon-1).toLocaleDateString('en-KE', {month:'long', year:'numeric'});
+  const monthPayments = payments.filter(p => p.month === month);
+  const monthUtils = utilities.filter(u => u.date && u.date.startsWith(month));
+
+  // Build CSV (opens perfectly in Excel)
+  let csv = `StallTrack Rent Report — ${monthName}\n\n`;
+  csv += `RENT PAYMENTS\n`;
+  csv += `Stall,Tenant,Phone,Expected Rent,Amount Paid,Method,Ref No.,Date,Status\n`;
+  stalls.forEach(s => {
+    const pays = monthPayments.filter(p => p.stallId === s.id);
+    if (pays.length > 0) {
+      pays.forEach(p => {
+        csv += `${s.name},${s.tenant?s.tenant.name:'—'},${s.tenant?s.tenant.phone:'—'},${s.rent},${p.amount},${p.method},${p.ref||'—'},${p.date},Paid\n`;
+      });
+    } else {
+      csv += `${s.name},${s.tenant?s.tenant.name:'Vacant'},${s.tenant?s.tenant.phone:'—'},${s.rent},0,—,—,—,${s.tenant?'Overdue':'Vacant'}\n`;
+    }
+  });
+
+  const totalCollected = monthPayments.reduce((a,p)=>a+p.amount,0);
+  const totalUtils = monthUtils.reduce((a,u)=>a+u.amount,0);
+  csv += `\nTOTAL COLLECTED,,,,${totalCollected},,,,\n`;
+  csv += `\nUTILITY BILLS\n`;
+  csv += `Stall,Type,Amount,Date,Status\n`;
+  monthUtils.forEach(u => {
+    const s = stalls.find(x=>x.id===u.stallId);
+    csv += `${s?s.name:'—'},${u.type},${u.amount},${u.date},${u.status}\n`;
+  });
+  csv += `\nTOTAL UTILITIES,,${totalUtils},,\n`;
+  csv += `NET INCOME,,${totalCollected-totalUtils},,\n`;
+
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `StallTrack-Report-${month}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('📊 Excel file downloaded!');
+}
+
 // ─── BACKUP & RESTORE ─────────────────────────────────────────
 function exportBackup() {
   const backup = {
@@ -1703,6 +2010,15 @@ window.closeModal = closeModal;
 window.renderAll = renderAll;
 window.renderSettings = renderSettings;
 window.openStallDetail = openStallDetail;
+window.toggleMoveInFields = toggleMoveInFields;
+window.confirmMoveIn = confirmMoveIn;
+window.openRename = openRename;
+window.saveRename = saveRename;
+window.openNotes = openNotes;
+window.saveNotes = saveNotes;
+window.renderReport = renderReport;
+window.exportReportPDF = exportReportPDF;
+window.exportReportExcel = exportReportExcel;
 window.openAddTenant = openAddTenant;
 window.openEditTenant = openEditTenant;
 window.saveTenant = saveTenant;
