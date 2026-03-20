@@ -350,7 +350,7 @@
     </div>
     <button class="btn btn-primary" onclick="doLogin()">Sign In →</button>
     <div class="error-msg" id="login-error"></div>
-    <div style="margin-top:16px; font-size:12px; color:var(--text3);">First time? Default password: <span style="font-family:'DM Mono',monospace;color:var(--text2);">admin1234</span></div>
+    <div id="login-hint" style="margin-top:16px; font-size:12px; color:var(--text3);">First time? Default password: <span style="font-family:'DM Mono',monospace;color:var(--text2);">admin1234</span></div>
   </div>
 </div>
 
@@ -452,7 +452,7 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">
         <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:4px;">🔑 Change Password</div>
         <div style="font-size:12px;color:var(--text2);margin-bottom:16px;">You'll need to answer your security question to change the password.</div>
-        <button class="btn btn-secondary" style="width:100%;" onclick="openChangePassword()">Change Password</button>
+        <button id="change-pw-btn" class="btn btn-secondary" style="width:100%;" onclick="openChangePassword()">Change Password</button>
       </div>
 
       <!-- App Info -->
@@ -808,12 +808,10 @@ const firebaseConfig = {
 const fireApp = initializeApp(firebaseConfig);
 const db = getFirestore(fireApp);
 const DB_ID = 'owner';
+const SETTINGS_ID = 'settings';
 
 // ─── STATE ───────────────────────────────────────────────────
-function getPassword() { return localStorage.getItem('app_password') || 'admin1234'; }
-function getSecurityQ() { try { return JSON.parse(localStorage.getItem('app_security')) || null; } catch { return null; } }
-function saveSecurityQ(q, a) { localStorage.setItem('app_security', JSON.stringify({ question: q, answer: a.toLowerCase().trim() })); }
-function savePassword(p) { localStorage.setItem('app_password', p); }
+let appSettings = { password: 'admin1234', securityQuestion: null, securityAnswer: null, passwordChanged: false };
 let lastReceipt = null;
 
 const defaultStalls = [
@@ -844,6 +842,20 @@ function hideLoading() {
 async function loadFromDB() {
   showLoading('Connecting to database...');
   try {
+    // Load settings (password, security question)
+    const settingsSnap = await getDoc(doc(db, 'stalltrack', SETTINGS_ID));
+    if (settingsSnap.exists()) {
+      appSettings = { ...appSettings, ...settingsSnap.data() };
+    } else {
+      // First time — save default settings
+      await saveSettingsToDB();
+    }
+    // Update login hint based on whether password has been changed
+    const hintEl = document.getElementById('login-hint');
+    if (hintEl) {
+      hintEl.style.display = appSettings.passwordChanged ? 'none' : 'block';
+    }
+    // Load data
     const snap = await getDoc(doc(db, 'stalltrack', DB_ID));
     if (snap.exists()) {
       const data = snap.data();
@@ -852,14 +864,12 @@ async function loadFromDB() {
       utilities = data.utilities || [];
       maintenance = data.maintenance || [];
     } else {
-      // First time — save defaults
       await saveToDB();
     }
     dbLoaded = true;
     window.payments = payments;
   } catch(e) {
     console.error('DB load error:', e);
-    // Fall back to localStorage if offline
     stalls = load('stalls', defaultStalls);
     payments = load('payments', []);
     utilities = load('utilities', []);
@@ -868,6 +878,14 @@ async function loadFromDB() {
     showToast('⚠️ Offline mode — using local data');
   }
   hideLoading();
+}
+
+async function saveSettingsToDB() {
+  try {
+    await setDoc(doc(db, 'stalltrack', SETTINGS_ID), appSettings);
+  } catch(e) {
+    console.error('Settings save error:', e);
+  }
 }
 
 async function saveToDB() {
@@ -919,14 +937,44 @@ window.showToast = showToast;
 // ─── AUTH ─────────────────────────────────────────────────────
 async function doLogin() {
   const pw = document.getElementById('login-password').value;
-  if (pw === getPassword()) {
-    await loadFromDB();
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    renderAll();
-  } else {
-    document.getElementById('login-error').textContent = 'Incorrect password. Try again.';
+  const errEl = document.getElementById('login-error');
+  const btn = document.querySelector('#login-screen .btn-primary');
+  btn.textContent = 'Checking...';
+  btn.disabled = true;
+  try {
+    // Load settings from Firebase first to get the real password
+    showLoading('Verifying...');
+    const settingsSnap = await getDoc(doc(db, 'stalltrack', SETTINGS_ID));
+    if (settingsSnap.exists()) {
+      appSettings = { ...appSettings, ...settingsSnap.data() };
+    }
+    hideLoading();
+    if (pw === appSettings.password) {
+      await loadFromDB();
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      renderAll();
+    } else {
+      errEl.textContent = 'Incorrect password. Try again.';
+    }
+  } catch(e) {
+    hideLoading();
+    // Offline fallback
+    if (pw === appSettings.password) {
+      stalls = load('stalls', defaultStalls);
+      payments = load('payments', []);
+      utilities = load('utilities', []);
+      maintenance = load('maintenance', []);
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('app').style.display = 'flex';
+      renderAll();
+      showToast('⚠️ Offline mode');
+    } else {
+      errEl.textContent = 'Incorrect password. Try again.';
+    }
   }
+  btn.textContent = 'Sign In →';
+  btn.disabled = false;
 }
 function doLogout() {
   document.getElementById('app').style.display = 'none';
@@ -1481,17 +1529,25 @@ function renderSettings() {
       backupEl.innerHTML = `<span style="color:var(--danger);">⚠️ No backup made yet — do one now!</span>`;
     }
   }
-  const sq = getSecurityQ();
+  // Security question status
   const statusEl = document.getElementById('security-q-status');
-  if (sq) {
-    statusEl.innerHTML = `<div style="background:rgba(96,240,160,0.08);border:1px solid rgba(96,240,160,0.2);border-radius:8px;padding:12px;font-size:13px;">
-      <span style="color:var(--success);font-weight:600;">✓ Security question is set</span><br>
-      <span style="color:var(--text2);margin-top:4px;display:block;">Q: ${sq.question}</span>
-    </div>`;
-  } else {
-    statusEl.innerHTML = `<div style="background:rgba(240,184,96,0.08);border:1px solid rgba(240,184,96,0.2);border-radius:8px;padding:12px;font-size:13px;color:var(--warning);">
-      ⚠️ No security question set yet. Set one before you can change your password.
-    </div>`;
+  if (statusEl) {
+    if (appSettings.securityQuestion) {
+      statusEl.innerHTML = `<div style="background:rgba(96,240,160,0.08);border:1px solid rgba(96,240,160,0.2);border-radius:8px;padding:12px;font-size:13px;">
+        <span style="color:var(--success);font-weight:600;">✓ Security question is set</span><br>
+        <span style="color:var(--text2);margin-top:4px;display:block;">Q: ${appSettings.securityQuestion}</span>
+      </div>`;
+    } else {
+      statusEl.innerHTML = `<div style="background:rgba(240,184,96,0.08);border:1px solid rgba(240,184,96,0.2);border-radius:8px;padding:12px;font-size:13px;color:var(--warning);">
+        ⚠️ No security question set yet. Set one before you can change your password.
+      </div>`;
+    }
+  }
+  // Show/hide change password button based on whether security Q is set
+  const changePwBtn = document.getElementById('change-pw-btn');
+  if (changePwBtn) {
+    changePwBtn.disabled = !appSettings.securityQuestion;
+    changePwBtn.style.opacity = appSettings.securityQuestion ? '1' : '0.4';
   }
 }
 
@@ -1499,26 +1555,35 @@ function openSetSecurityQ() {
   document.getElementById('sq-answer').value = '';
   document.getElementById('sq-answer2').value = '';
   document.getElementById('sq-error').textContent = '';
+  // Pre-select current question if exists
+  if (appSettings.securityQuestion) {
+    const sel = document.getElementById('sq-question');
+    for (let o of sel.options) { if (o.value === appSettings.securityQuestion) { o.selected = true; break; } }
+  }
   openModal('modal-security-q');
 }
 
-function saveSecurityQuestion() {
+async function saveSecurityQuestion() {
   const question = document.getElementById('sq-question').value;
   const answer = document.getElementById('sq-answer').value.trim();
   const answer2 = document.getElementById('sq-answer2').value.trim();
   const errEl = document.getElementById('sq-error');
   if (!answer) { errEl.textContent = 'Please enter an answer.'; return; }
   if (answer.toLowerCase() !== answer2.toLowerCase()) { errEl.textContent = 'Answers do not match.'; return; }
-  saveSecurityQ(question, answer);
+  appSettings.securityQuestion = question;
+  appSettings.securityAnswer = answer.toLowerCase().trim();
+  await saveSettingsToDB();
   closeModal('modal-security-q');
   renderSettings();
-  alert('✅ Security question saved!');
+  showToast('✅ Security question saved across all devices!');
 }
 
 function openChangePassword() {
-  const sq = getSecurityQ();
-  if (!sq) { alert('Please set a security question first before changing your password.'); return; }
-  document.getElementById('cpw-question').textContent = sq.question;
+  if (!appSettings.securityQuestion) {
+    alert('Please set a security question first before changing your password.');
+    return;
+  }
+  document.getElementById('cpw-question').textContent = appSettings.securityQuestion;
   document.getElementById('cpw-answer').value = '';
   document.getElementById('cpw-new').value = '';
   document.getElementById('cpw-new2').value = '';
@@ -1530,24 +1595,28 @@ function openChangePassword() {
 }
 
 function verifySQAnswer() {
-  const sq = getSecurityQ();
   const answer = document.getElementById('cpw-answer').value.trim().toLowerCase();
   const errEl = document.getElementById('cpw-error');
   if (!answer) { errEl.textContent = 'Please enter your answer.'; return; }
-  if (answer !== sq.answer) { errEl.textContent = '❌ Incorrect answer. Please try again.'; return; }
+  if (answer !== appSettings.securityAnswer) { errEl.textContent = '❌ Incorrect answer. Please try again.'; return; }
   document.getElementById('cpw-step1').style.display = 'none';
   document.getElementById('cpw-step2').style.display = 'block';
 }
 
-function doChangePassword() {
+async function doChangePassword() {
   const newPw = document.getElementById('cpw-new').value;
   const newPw2 = document.getElementById('cpw-new2').value;
   const errEl = document.getElementById('cpw-error2');
   if (!newPw || newPw.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
   if (newPw !== newPw2) { errEl.textContent = 'Passwords do not match.'; return; }
-  savePassword(newPw);
+  appSettings.password = newPw;
+  appSettings.passwordChanged = true;
+  await saveSettingsToDB();
+  // Hide the default password hint on login screen
+  const hintEl = document.getElementById('login-hint');
+  if (hintEl) hintEl.style.display = 'none';
   closeModal('modal-change-pw');
-  alert('✅ Password changed successfully! Use your new password next time you log in.');
+  showToast('✅ Password updated on all devices!');
 }
 
 // ─── EXPOSE ALL FUNCTIONS TO WINDOW (required for type=module) ─
@@ -1578,7 +1647,6 @@ window.saveSecurityQuestion = saveSecurityQuestion;
 window.openChangePassword = openChangePassword;
 window.verifySQAnswer = verifySQAnswer;
 window.doChangePassword = doChangePassword;
-window.payments = payments;
 
 // ─── PWA INSTALL ──────────────────────────────────────────────
 let deferredPrompt = null;
