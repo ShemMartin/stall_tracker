@@ -542,7 +542,8 @@
   <div class="modal">
     <div class="modal-title">Receipt Generated ✓</div>
     <div id="receipt-content"></div>
-    <div class="modal-actions" style="flex-direction:column;">
+    <div class="modal-actions" style="flex-direction:column;gap:8px;">
+      <button class="btn btn-primary" onclick="downloadReceiptPDF()">📄 Download as PDF</button>
       <button class="btn btn-success" onclick="shareReceipt()">📤 Share via WhatsApp</button>
       <button class="btn btn-secondary" onclick="closeModal('modal-receipt')">Done</button>
     </div>
@@ -1174,6 +1175,103 @@ function shareReceipt() {
   window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`, '_blank');
 }
 
+function downloadReceiptPDF() {
+  if (!lastReceipt) return;
+  const { p, s, tenant } = lastReceipt;
+  const receiptNo = String(p.id).slice(-8);
+  const generatedDate = new Date().toLocaleDateString('en-KE', { day:'numeric', month:'long', year:'numeric' });
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Receipt #${receiptNo}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'DM Sans', Arial, sans-serif; background: #f5f5f5; display: flex; justify-content: center; padding: 30px 20px; }
+    .receipt { background: #fff; width: 100%; max-width: 420px; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.12); }
+    .receipt-header { background: #0f0f0f; padding: 28px 28px 22px; color: #fff; }
+    .receipt-brand { font-size: 22px; font-weight: 800; color: #c8f060; margin-bottom: 2px; letter-spacing: -0.5px; }
+    .receipt-subtitle { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.08em; }
+    .receipt-body { padding: 24px 28px; }
+    .receipt-section { margin-bottom: 20px; }
+    .receipt-section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: #999; margin-bottom: 10px; font-weight: 600; }
+    .receipt-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0f0f0; }
+    .receipt-row:last-child { border-bottom: none; }
+    .receipt-row .label { font-size: 13px; color: #666; }
+    .receipt-row .value { font-size: 13px; color: #111; font-weight: 500; font-family: 'DM Mono', monospace; text-align: right; }
+    .receipt-total { background: #f9f9f9; border-radius: 8px; padding: 16px 20px; margin: 20px 0; display: flex; justify-content: space-between; align-items: center; border: 2px solid #0f0f0f; }
+    .receipt-total .label { font-size: 13px; font-weight: 700; color: #111; text-transform: uppercase; letter-spacing: 0.05em; }
+    .receipt-total .value { font-size: 24px; font-weight: 700; color: #111; font-family: 'DM Mono', monospace; }
+    .receipt-footer { text-align: center; padding: 16px 28px 24px; }
+    .receipt-footer .thank-you { font-size: 14px; font-weight: 600; color: #111; margin-bottom: 6px; }
+    .receipt-footer .meta { font-size: 11px; color: #aaa; line-height: 1.6; }
+    .receipt-divider { border: none; border-top: 2px dashed #e0e0e0; margin: 4px 0; }
+    .stamp { display: inline-block; border: 3px solid #c8f060; border-radius: 8px; padding: 4px 14px; font-size: 13px; font-weight: 800; color: #111; background: #f0ffc0; letter-spacing: 0.05em; text-transform: uppercase; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .receipt { box-shadow: none; border-radius: 0; max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="receipt">
+    <div class="receipt-header">
+      <div class="receipt-brand">🏪 StallTrack</div>
+      <div class="receipt-subtitle">Official Rent Payment Receipt</div>
+    </div>
+    <div class="receipt-body">
+      <div class="receipt-section">
+        <div class="receipt-section-title">Tenant Details</div>
+        <div class="receipt-row"><span class="label">Stall</span><span class="value">${s ? s.name : '—'}</span></div>
+        <div class="receipt-row"><span class="label">Tenant Name</span><span class="value">${tenant ? tenant.name : '—'}</span></div>
+        <div class="receipt-row"><span class="label">Phone</span><span class="value">${tenant ? tenant.phone : '—'}</span></div>
+      </div>
+      <hr class="receipt-divider">
+      <div class="receipt-section" style="margin-top:20px;">
+        <div class="receipt-section-title">Payment Details</div>
+        <div class="receipt-row"><span class="label">Payment Date</span><span class="value">${p.date}</span></div>
+        <div class="receipt-row"><span class="label">Month Paid For</span><span class="value">${p.month}</span></div>
+        <div class="receipt-row"><span class="label">Method</span><span class="value">${p.method}</span></div>
+        ${p.ref ? `<div class="receipt-row"><span class="label">Ref / Transaction No.</span><span class="value">${p.ref}</span></div>` : ''}
+        ${p.notes ? `<div class="receipt-row"><span class="label">Notes</span><span class="value">${p.notes}</span></div>` : ''}
+      </div>
+      <div class="receipt-total">
+        <span class="label">Total Paid</span>
+        <span class="value">KSh ${p.amount.toLocaleString()}</span>
+      </div>
+      <div style="text-align:center;margin-bottom:4px;"><span class="stamp">✓ Payment Received</span></div>
+    </div>
+    <div class="receipt-footer">
+      <div class="thank-you">Thank you for your payment!</div>
+      <div class="meta">
+        Receipt No: #${receiptNo}<br>
+        Generated: ${generatedDate}<br>
+        StallTrack — Rent Management System
+      </div>
+    </div>
+  </div>
+  <script>window.onload = function() { window.print(); }<\/script>
+</body>
+</html>`;
+
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const win = window.open(url, '_blank');
+  // Fallback: if popup blocked, download as file
+  if (!win) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `StallTrack-Receipt-${s ? s.name.replace(/\s/g,'-') : 'payment'}-${p.month}.html`;
+    a.click();
+    showToast('📄 Receipt downloaded — open file to print as PDF');
+  } else {
+    showToast('📄 Print dialog opened — choose Save as PDF');
+  }
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
 function renderPayments() {
   const sorted = [...payments].sort((a,b)=>b.date.localeCompare(a.date));
   document.getElementById('payments-list').innerHTML = sorted.length === 0 ? `<div class="empty-state"><div class="icon">💳</div>No payments recorded yet</div>` : sorted.map(p => {
@@ -1515,7 +1613,7 @@ window.openMoveOut = openMoveOut; window.confirmMoveOut = confirmMoveOut;
 window.openEditPayment = openEditPayment; window.saveEditPayment = saveEditPayment;
 window.deletePayment = deletePayment; window.restorePayment = restorePayment; window.permanentlyDeletePayment = permanentlyDeletePayment;
 window.openAddPayment = openAddPayment; window.savePayment = savePayment;
-window.parseMpesaSMS = parseMpesaSMS; window.showReceipt = showReceipt; window.shareReceipt = shareReceipt;
+window.parseMpesaSMS = parseMpesaSMS; window.showReceipt = showReceipt; window.shareReceipt = shareReceipt; window.downloadReceiptPDF = downloadReceiptPDF;
 window.openAddUtility = openAddUtility; window.saveUtility = saveUtility;
 window.openAddMaintenance = openAddMaintenance; window.saveMaintenance = saveMaintenance; window.toggleMaintStatus = toggleMaintStatus;
 window.exportBackup = exportBackup; window.importBackup = importBackup;
