@@ -475,7 +475,7 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
         <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:12px;">ℹ️ App Info</div>
         <div class="stall-row"><span>App</span><span>StallTrack</span></div>
-        <div class="stall-row"><span>Version</span><span>1.2.0</span></div>
+        <div class="stall-row"><span>Version</span><span>1.3.0</span></div>
         <div class="stall-row"><span>Data Storage</span><span style="color:var(--success);">☁️ Firebase (Google Cloud)</span></div>
         <div class="stall-row"><span>Auto Backup</span><span style="color:var(--success);">✅ Every change</span></div>
         <div class="stall-row"><span>Hosted On</span><span>GitHub Pages</span></div>
@@ -866,6 +866,50 @@
   </div>
 </div>
 
+<!-- EDIT PAYMENT MODAL -->
+<div class="modal-overlay" id="modal-edit-payment">
+  <div class="modal">
+    <div class="modal-title">✏️ Edit Payment</div>
+    <div class="form-group">
+      <label>Stall</label>
+      <select id="edit-pay-stall"></select>
+    </div>
+    <div class="form-group">
+      <label>Amount (KSh)</label>
+      <input type="number" id="edit-pay-amount">
+    </div>
+    <div class="form-group">
+      <label>Payment Date</label>
+      <input type="date" id="edit-pay-date">
+    </div>
+    <div class="form-group">
+      <label>Payment Method</label>
+      <select id="edit-pay-method">
+        <option value="M-Pesa">M-Pesa</option>
+        <option value="Cash">Cash</option>
+        <option value="Bank Transfer">Bank Transfer</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Transaction / Receipt No.</label>
+      <input type="text" id="edit-pay-ref">
+    </div>
+    <div class="form-group">
+      <label>Month Paid For</label>
+      <input type="month" id="edit-pay-month">
+    </div>
+    <div class="form-group">
+      <label>Notes (optional)</label>
+      <textarea id="edit-pay-notes"></textarea>
+    </div>
+    <input type="hidden" id="edit-pay-id">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit-payment')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEditPayment()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
 <script type="module">
 // ─── FIREBASE SETUP ──────────────────────────────────────────
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -1210,6 +1254,11 @@ function openStallDetail(stallId) {
             <span class="payment-date">${p.date}</span>
           </div>
           <div class="payment-meta">${p.method} · For: ${p.month} <span class="payment-ref">${p.ref ? '· ' + p.ref : ''}</span></div>
+          <div style="margin-top:6px;display:flex;gap:6px;">
+            <button class="btn btn-secondary btn-sm" onclick="showReceipt(payments.find(x=>x.id===${p.id}))">🧾</button>
+            <button class="btn btn-secondary btn-sm" onclick="closeModal('modal-stall');openEditPayment(${p.id})">✏️ Edit</button>
+            <button class="btn btn-sm" style="background:rgba(240,96,96,0.15);color:var(--danger);border:1px solid rgba(240,96,96,0.3);" onclick="deletePayment(${p.id})">🗑️</button>
+          </div>
         </div>
       `).join('');
     }
@@ -1552,12 +1601,67 @@ function renderPayments() {
       <div class="payment-meta" style="margin-bottom:4px;color:var(--text);font-weight:500;">${s ? s.name : ''} ${s && s.tenant ? '· ' + s.tenant.name : ''}</div>
       <div class="payment-meta">${p.method} · For: ${p.month} <span class="payment-ref">${p.ref ? '· ' + p.ref : ''}</span></div>
       ${p.notes ? `<div class="payment-meta" style="margin-top:2px;">${p.notes}</div>` : ''}
-      <div style="margin-top:8px;"><button class="btn btn-secondary btn-sm" onclick="showReceipt(payments.find(x=>x.id===${p.id}))">🧾 View Receipt</button></div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="showReceipt(payments.find(x=>x.id===${p.id}))">🧾 Receipt</button>
+        <button class="btn btn-secondary btn-sm" onclick="openEditPayment(${p.id})">✏️ Edit</button>
+        <button class="btn btn-sm" style="background:rgba(240,96,96,0.15);color:var(--danger);border:1px solid rgba(240,96,96,0.3);" onclick="deletePayment(${p.id})">🗑️ Delete</button>
+      </div>
     </div>`;
   }).join('');
 }
 
-// ─── UTILITIES ────────────────────────────────────────────────
+// ─── EDIT & DELETE PAYMENT ────────────────────────────────────
+function openEditPayment(payId) {
+  const p = payments.find(x => x.id === payId);
+  if (!p) return;
+  const sel = document.getElementById('edit-pay-stall');
+  sel.innerHTML = stalls.map(s => `<option value="${s.id}" ${s.id===p.stallId?'selected':''}>${s.name}${s.tenant?' — '+s.tenant.name:''}</option>`).join('');
+  document.getElementById('edit-pay-id').value = payId;
+  document.getElementById('edit-pay-amount').value = p.amount;
+  document.getElementById('edit-pay-date').value = p.date;
+  document.getElementById('edit-pay-method').value = p.method;
+  document.getElementById('edit-pay-ref').value = p.ref || '';
+  document.getElementById('edit-pay-month').value = p.month;
+  document.getElementById('edit-pay-notes').value = p.notes || '';
+  openModal('modal-edit-payment');
+}
+
+async function saveEditPayment() {
+  const payId = parseInt(document.getElementById('edit-pay-id').value);
+  const stallId = parseInt(document.getElementById('edit-pay-stall').value);
+  const amount = parseInt(document.getElementById('edit-pay-amount').value);
+  const date = document.getElementById('edit-pay-date').value;
+  const method = document.getElementById('edit-pay-method').value;
+  const ref = document.getElementById('edit-pay-ref').value.trim();
+  const month = document.getElementById('edit-pay-month').value;
+  const notes = document.getElementById('edit-pay-notes').value.trim();
+  if (!amount || !date || !month) { alert('Please fill required fields.'); return; }
+  const idx = payments.findIndex(x => x.id === payId);
+  if (idx < 0) return;
+  // Preserve original id and tenantId
+  const original = payments[idx];
+  payments[idx] = { ...original, stallId, amount, date, method, ref, month, notes, editedAt: new Date().toISOString() };
+  await saveAll(); renderAll();
+  closeModal('modal-edit-payment');
+  showToast('✅ Payment updated!');
+}
+
+async function deletePayment(payId) {
+  const p = payments.find(x => x.id === payId);
+  if (!p) return;
+  const s = stalls.find(x => x.id === p.stallId);
+  const confirm1 = confirm(`⚠️ Delete this payment?\n\nStall: ${s ? s.name : ''}\nAmount: KSh ${p.amount.toLocaleString()}\nDate: ${p.date}\nMonth: ${p.month}\n\nThis cannot be undone.`);
+  if (!confirm1) return;
+  const typed = prompt('Type DELETE to confirm:');
+  if (typed !== 'DELETE') { showToast('❌ Deletion cancelled — you must type DELETE exactly'); return; }
+  payments = payments.filter(x => x.id !== payId);
+  window.payments = payments;
+  await saveAll(); renderAll();
+  closeModal('modal-stall');
+  showToast('🗑️ Payment deleted');
+}
+
+// ─── UTILITIES ─────────────────────────────────────────────────
 function openAddUtility() {
   const sel = document.getElementById('util-stall');
   sel.innerHTML = stalls.map(s => `<option value="${s.id}">${s.name}${s.tenant ? ' — '+s.tenant.name : ' (Vacant)'}</option>`).join('');
@@ -2024,7 +2128,9 @@ window.openEditTenant = openEditTenant;
 window.saveTenant = saveTenant;
 window.openMoveOut = openMoveOut;
 window.confirmMoveOut = confirmMoveOut;
-window.parseMpesaSMS = parseMpesaSMS;
+window.openEditPayment = openEditPayment;
+window.saveEditPayment = saveEditPayment;
+window.deletePayment = deletePayment;
 window.openAddPayment = openAddPayment;
 window.savePayment = savePayment;
 window.showReceipt = showReceipt;
