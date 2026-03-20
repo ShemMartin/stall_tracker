@@ -475,7 +475,7 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
         <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:12px;">ℹ️ App Info</div>
         <div class="stall-row"><span>App</span><span>StallTrack</span></div>
-        <div class="stall-row"><span>Version</span><span>1.3.0</span></div>
+        <div class="stall-row"><span>Version</span><span>1.4.0</span></div>
         <div class="stall-row"><span>Data Storage</span><span style="color:var(--success);">☁️ Firebase (Google Cloud)</span></div>
         <div class="stall-row"><span>Auto Backup</span><span style="color:var(--success);">✅ Every change</span></div>
         <div class="stall-row"><span>Hosted On</span><span>GitHub Pages</span></div>
@@ -580,15 +580,14 @@
     </div>
     <div id="movein-date-group" class="form-group">
       <label>Move-in Date</label>
-      <input type="date" id="tenant-movein">
+      <input type="date" id="tenant-movein" onchange="updateRentDuePreview()">
     </div>
     <div id="expected-movein-group" class="form-group" style="display:none;">
       <label>Expected Move-in Date</label>
       <input type="date" id="tenant-expected-movein">
     </div>
-    <div class="form-group">
-      <label>Rent Due Day (1–28)</label>
-      <input type="number" id="tenant-dueday" min="1" max="28" placeholder="e.g. 5">
+    <div id="rent-due-preview" style="display:none;background:rgba(200,240,96,0.06);border:1px solid rgba(200,240,96,0.2);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--text2);margin-bottom:14px;">
+      📅 First rent due: <strong id="rent-due-preview-date" style="color:var(--accent);"></strong> · Then monthly on the <strong id="rent-due-preview-day" style="color:var(--accent);"></strong>
     </div>
     <div class="form-group">
       <label>Monthly Rent (KSh)</label>
@@ -1149,8 +1148,12 @@ function renderDashboard() {
   const collectedThisMonth = payments.filter(p => p.month === thisMonth).reduce((a, p) => a + p.amount, 0);
   const overdueCount = stalls.filter(s => {
     if (!s.tenant || s.tenant.status === 'Booked') return false;
-    const paid = payments.some(p => p.stallId === s.id && p.month === thisMonth);
-    return !paid;
+    if (!s.tenant.moveIn) return false;
+    const nextDue = new Date(calcNextRentDue(s.tenant.moveIn));
+    const today = new Date(); today.setHours(0,0,0,0);
+    if (nextDue > today) return false; // not due yet
+    const dueMonth = nextDue.toISOString().slice(0,7);
+    return !payments.some(p => p.stallId === s.id && p.month === dueMonth);
   }).length;
 
   const depositsCollected = stalls.filter(s => s.tenant && s.tenant.depositStatus === 'Paid').reduce((a,s) => a + (s.tenant.deposit || 0), 0);
@@ -1208,7 +1211,7 @@ function renderStalls() {
         <div class="stall-row"><span>Phone</span><span>${s.tenant.phone}</span></div>
         ${isBooked
           ? `<div class="stall-row"><span>Expected Move-in</span><span>${s.tenant.expectedMoveIn || 'TBD'}</span></div>`
-          : `<div class="stall-row"><span>Due Day</span><span>${s.tenant.dueDay}${['st','nd','rd'][s.tenant.dueDay-1]||'th'} of month</span></div>
+          : `<div class="stall-row"><span>Next Rent Due</span><span style="color:${isRentOverdue(s.tenant.moveIn)?'var(--danger)':'var(--text)'};">${s.tenant.moveIn ? calcNextRentDue(s.tenant.moveIn) : '—'}</span></div>
              <div class="stall-row"><span>Move-in</span><span>${s.tenant.moveIn}</span></div>`}
         <div class="stall-row"><span>Deposit</span><span><span class="badge ${s.tenant.depositStatus==='Paid'?'badge-paid':'badge-pending'}">${s.tenant.depositStatus||'Unpaid'}</span></span></div>
       ` : '<div class="stall-row" style="color:var(--text3);margin-top:4px;">Click to assign a tenant</div>'}
@@ -1237,7 +1240,8 @@ function openStallDetail(stallId) {
       ${isBooked
         ? `<div class="stall-row"><span>Expected Move-in</span><span>${s.tenant.expectedMoveIn || 'TBD'}</span></div>`
         : `<div class="stall-row"><span>Move-in</span><span>${s.tenant.moveIn}</span></div>
-           <div class="stall-row"><span>Rent Due</span><span>${s.tenant.dueDay}${['st','nd','rd'][s.tenant.dueDay-1]||'th'} every month</span></div>`}
+           <div class="stall-row"><span>First Rent Due</span><span>${s.tenant.moveIn ? calcFirstRentDue(s.tenant.moveIn) : '—'}</span></div>
+           <div class="stall-row"><span>Next Rent Due</span><span style="color:${isRentOverdue(s.tenant.moveIn)?'var(--danger)':'var(--accent)'};">${s.tenant.moveIn ? calcNextRentDue(s.tenant.moveIn) : '—'}</span></div>`}
       <div class="stall-row" style="margin-top:8px;"><span>This Month</span><span><span class="badge ${isBooked ? 'badge-booked' : paid ? 'badge-paid' : 'badge-overdue'}">${isBooked ? 'Not Active Yet' : paid ? '✓ Paid' : '✗ Overdue'}</span></span></div>
       <div class="stall-row" style="margin-top:4px;"><span>Deposit</span><span><span class="badge ${s.tenant.depositStatus==='Paid'?'badge-paid':'badge-overdue'}">${s.tenant.depositStatus==='Paid' ? '✓ KSh '+(s.tenant.deposit||0).toLocaleString() : '✗ Unpaid — KSh '+(s.tenant.deposit||0).toLocaleString()}</span></span></div>
       ${s.tenant.depositStatus==='Paid' && s.tenant.depositDate ? `<div class="stall-row" style="font-size:11px;color:var(--text3);"><span>Deposit Date</span><span>${s.tenant.depositDate}${s.tenant.depositRef?' · '+s.tenant.depositRef:''}</span></div>` : ''}
@@ -1326,6 +1330,56 @@ function openStallDetail(stallId) {
   openModal('modal-stall');
 }
 
+// ─── RENT DUE CALCULATION ─────────────────────────────────────
+function calcFirstRentDue(moveInDate) {
+  if (!moveInDate) return null;
+  const d = new Date(moveInDate);
+  d.setDate(d.getDate() + 30);
+  return d.toISOString().slice(0, 10);
+}
+
+function calcNextRentDue(moveInDate) {
+  if (!moveInDate) return null;
+  const firstDue = new Date(calcFirstRentDue(moveInDate));
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  // Find next due date from today
+  let next = new Date(firstDue);
+  while (next < today) {
+    next.setMonth(next.getMonth() + 1);
+  }
+  return next.toISOString().slice(0, 10);
+}
+
+function getDueDay(moveInDate) {
+  if (!moveInDate) return null;
+  const firstDue = new Date(calcFirstRentDue(moveInDate));
+  return firstDue.getDate();
+}
+
+function ordinal(n) {
+  return n + (['st','nd','rd'][((n+90)%100-10)%10-1] || 'th');
+}
+
+function updateRentDuePreview() {
+  const moveIn = document.getElementById('tenant-movein').value;
+  const preview = document.getElementById('rent-due-preview');
+  if (!moveIn) { preview.style.display = 'none'; return; }
+  const firstDue = calcFirstRentDue(moveIn);
+  const day = getDueDay(moveIn);
+  document.getElementById('rent-due-preview-date').textContent = new Date(firstDue).toLocaleDateString('en-KE', { day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('rent-due-preview-day').textContent = ordinal(day) + ' of every month';
+  preview.style.display = 'block';
+}
+
+function isRentOverdue(moveInDate) {
+  if (!moveInDate) return false;
+  const nextDue = new Date(calcNextRentDue(moveInDate));
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  return nextDue <= today;
+}
+
 function toggleMoveInFields() {
   const status = document.getElementById('tenant-status').value;
   document.getElementById('movein-date-group').style.display = status === 'Occupied' ? 'block' : 'none';
@@ -1343,8 +1397,8 @@ function openAddTenant(stallId) {
   document.getElementById('tenant-phone').value = '';
   document.getElementById('tenant-movein').value = new Date().toISOString().slice(0,10);
   document.getElementById('tenant-expected-movein').value = '';
-  document.getElementById('tenant-dueday').value = '';
   document.getElementById('tenant-rent').value = s.rent;
+  updateRentDuePreview();
   document.getElementById('tenant-deposit').value = 6500;
   document.getElementById('tenant-deposit-status').value = 'Unpaid';
   document.getElementById('tenant-deposit-date').value = new Date().toISOString().slice(0,10);
@@ -1363,8 +1417,8 @@ function openEditTenant(stallId) {
   document.getElementById('tenant-phone').value = s.tenant.phone;
   document.getElementById('tenant-movein').value = s.tenant.moveIn || '';
   document.getElementById('tenant-expected-movein').value = s.tenant.expectedMoveIn || '';
-  document.getElementById('tenant-dueday').value = s.tenant.dueDay;
   document.getElementById('tenant-rent').value = s.rent;
+  updateRentDuePreview();
   document.getElementById('tenant-deposit').value = s.tenant.deposit || 6500;
   document.getElementById('tenant-deposit-status').value = s.tenant.depositStatus || 'Unpaid';
   document.getElementById('tenant-deposit-date').value = s.tenant.depositDate || new Date().toISOString().slice(0,10);
@@ -1376,7 +1430,6 @@ async function saveTenant() {
   const stallId = parseInt(document.getElementById('tenant-stall-id').value);
   const name = document.getElementById('tenant-name').value.trim();
   const phone = document.getElementById('tenant-phone').value.trim();
-  const dueDay = parseInt(document.getElementById('tenant-dueday').value);
   const rent = parseInt(document.getElementById('tenant-rent').value);
   const deposit = parseInt(document.getElementById('tenant-deposit').value) || 6500;
   const depositStatus = document.getElementById('tenant-deposit-status').value;
@@ -1385,7 +1438,8 @@ async function saveTenant() {
   const status = document.getElementById('tenant-status').value;
   const moveIn = status === 'Occupied' ? document.getElementById('tenant-movein').value : null;
   const expectedMoveIn = status === 'Booked' ? document.getElementById('tenant-expected-movein').value : null;
-  if (!name || !phone || !dueDay || !rent) { alert('Please fill all fields.'); return; }
+  const dueDay = moveIn ? getDueDay(moveIn) : null;
+  if (!name || !phone || !rent) { alert('Please fill all fields.'); return; }
   if (status === 'Occupied' && !moveIn) { alert('Please enter a move-in date.'); return; }
   const idx = stalls.findIndex(x => x.id === stallId);
   const tenantId = stalls[idx].tenant ? stalls[idx].tenant.id : Date.now();
@@ -2114,6 +2168,7 @@ window.closeModal = closeModal;
 window.renderAll = renderAll;
 window.renderSettings = renderSettings;
 window.openStallDetail = openStallDetail;
+window.updateRentDuePreview = updateRentDuePreview;
 window.toggleMoveInFields = toggleMoveInFields;
 window.confirmMoveIn = confirmMoveIn;
 window.openRename = openRename;
