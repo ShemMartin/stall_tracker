@@ -401,6 +401,14 @@
         <button class="btn btn-primary btn-sm" onclick="openAddPayment()">+ Record Payment</button>
       </div>
       <div id="payments-list"></div>
+      <!-- DELETED RECORDS -->
+      <div id="deleted-records-section" style="display:none;margin-top:24px;">
+        <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+          🗑️ Deleted Records
+          <span style="font-size:11px;font-weight:400;color:var(--text3);">Tap restore to recover a payment</span>
+        </div>
+        <div id="deleted-payments-list"></div>
+      </div>
     </div>
 
     <!-- UTILITIES -->
@@ -475,7 +483,7 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
         <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:12px;">ℹ️ App Info</div>
         <div class="stall-row"><span>App</span><span>StallTrack</span></div>
-        <div class="stall-row"><span>Version</span><span>1.4.0</span></div>
+        <div class="stall-row"><span>Version</span><span>1.5.0</span></div>
         <div class="stall-row"><span>Data Storage</span><span style="color:var(--success);">☁️ Firebase (Google Cloud)</span></div>
         <div class="stall-row"><span>Auto Backup</span><span style="color:var(--success);">✅ Every change</span></div>
         <div class="stall-row"><span>Hosted On</span><span>GitHub Pages</span></div>
@@ -945,6 +953,7 @@ let stalls = defaultStalls;
 let payments = [];
 let utilities = [];
 let maintenance = [];
+let deletedPayments = [];
 let dbLoaded = false;
 
 // Show loading overlay
@@ -981,6 +990,7 @@ async function loadFromDB() {
       payments = data.payments || [];
       utilities = data.utilities || [];
       maintenance = data.maintenance || [];
+      deletedPayments = data.deletedPayments || [];
     } else {
       await saveToDB();
     }
@@ -1014,7 +1024,7 @@ async function saveToDB() {
   save('maintenance', maintenance);
   try {
     await setDoc(doc(db, 'stalltrack', DB_ID), {
-      stalls, payments, utilities, maintenance,
+      stalls, payments, utilities, maintenance, deletedPayments,
       updatedAt: new Date().toISOString()
     });
   } catch(e) {
@@ -1643,25 +1653,52 @@ function renderPayments() {
   const sorted = [...payments].sort((a,b)=>b.date.localeCompare(a.date));
   if (sorted.length === 0) {
     document.getElementById('payments-list').innerHTML = `<div class="empty-state"><div class="icon">💳</div>No payments recorded yet</div>`;
-    return;
+  } else {
+    document.getElementById('payments-list').innerHTML = sorted.map(p => {
+      const s = stalls.find(x => x.id === p.stallId);
+      return `<div class="payment-item">
+        <div class="payment-top">
+          <span class="payment-amount">KSh ${p.amount.toLocaleString()}</span>
+          <span class="payment-date">${p.date}</span>
+        </div>
+        <div class="payment-meta" style="margin-bottom:4px;color:var(--text);font-weight:500;">${s ? s.name : ''} ${s && s.tenant ? '· ' + s.tenant.name : ''}</div>
+        <div class="payment-meta">${p.method} · For: ${p.month} <span class="payment-ref">${p.ref ? '· ' + p.ref : ''}</span></div>
+        ${p.notes ? `<div class="payment-meta" style="margin-top:2px;">${p.notes}</div>` : ''}
+        ${p.editedAt ? `<div class="payment-meta" style="margin-top:2px;color:var(--text3);font-size:11px;">✏️ Edited ${new Date(p.editedAt).toLocaleDateString('en-KE')}</div>` : ''}
+        <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="showReceipt(payments.find(x=>x.id===${p.id}))">🧾 Receipt</button>
+          <button class="btn btn-secondary btn-sm" onclick="openEditPayment(${p.id})">✏️ Edit</button>
+          <button class="btn btn-sm" style="background:rgba(240,96,96,0.15);color:var(--danger);border:1px solid rgba(240,96,96,0.3);" onclick="deletePayment(${p.id})">🗑️ Delete</button>
+        </div>
+      </div>`;
+    }).join('');
   }
-  document.getElementById('payments-list').innerHTML = sorted.map(p => {
-    const s = stalls.find(x => x.id === p.stallId);
-    return `<div class="payment-item">
-      <div class="payment-top">
-        <span class="payment-amount">KSh ${p.amount.toLocaleString()}</span>
-        <span class="payment-date">${p.date}</span>
-      </div>
-      <div class="payment-meta" style="margin-bottom:4px;color:var(--text);font-weight:500;">${s ? s.name : ''} ${s && s.tenant ? '· ' + s.tenant.name : ''}</div>
-      <div class="payment-meta">${p.method} · For: ${p.month} <span class="payment-ref">${p.ref ? '· ' + p.ref : ''}</span></div>
-      ${p.notes ? `<div class="payment-meta" style="margin-top:2px;">${p.notes}</div>` : ''}
-      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="showReceipt(payments.find(x=>x.id===${p.id}))">🧾 Receipt</button>
-        <button class="btn btn-secondary btn-sm" onclick="openEditPayment(${p.id})">✏️ Edit</button>
-        <button class="btn btn-sm" style="background:rgba(240,96,96,0.15);color:var(--danger);border:1px solid rgba(240,96,96,0.3);" onclick="deletePayment(${p.id})">🗑️ Delete</button>
-      </div>
-    </div>`;
-  }).join('');
+
+  // Deleted records section
+  const delSection = document.getElementById('deleted-records-section');
+  const delList = document.getElementById('deleted-payments-list');
+  if (deletedPayments.length === 0) {
+    delSection.style.display = 'none';
+  } else {
+    delSection.style.display = 'block';
+    const sortedDel = [...deletedPayments].sort((a,b) => b.deletedAt.localeCompare(a.deletedAt));
+    delList.innerHTML = sortedDel.map(p => {
+      const s = stalls.find(x => x.id === p.stallId);
+      const deletedDate = new Date(p.deletedAt).toLocaleDateString('en-KE');
+      return `<div class="payment-item" style="opacity:0.65;border-color:rgba(240,96,96,0.2);">
+        <div class="payment-top">
+          <span class="payment-amount" style="color:var(--danger);text-decoration:line-through;">KSh ${p.amount.toLocaleString()}</span>
+          <span class="payment-date">${p.date}</span>
+        </div>
+        <div class="payment-meta" style="margin-bottom:4px;color:var(--text);font-weight:500;">${p.deletedFrom || (s ? s.name : '')} · For: ${p.month}</div>
+        <div class="payment-meta">${p.method} ${p.ref ? '· ' + p.ref : ''}</div>
+        <div class="payment-meta" style="color:var(--danger);font-size:11px;margin-top:2px;">Deleted on ${deletedDate}</div>
+        <div style="margin-top:8px;">
+          <button class="btn btn-success btn-sm" onclick="restorePayment(${p.id})">↩️ Restore</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
 }
 
 // ─── EDIT & DELETE PAYMENT ────────────────────────────────────
@@ -1704,15 +1741,34 @@ async function deletePayment(payId) {
   const p = payments.find(x => x.id === payId);
   if (!p) return;
   const s = stalls.find(x => x.id === p.stallId);
-  const confirm1 = confirm(`⚠️ Delete this payment?\n\nStall: ${s ? s.name : ''}\nAmount: KSh ${p.amount.toLocaleString()}\nDate: ${p.date}\nMonth: ${p.month}\n\nThis cannot be undone.`);
+  const confirm1 = confirm(`⚠️ Delete this payment?\n\nStall: ${s ? s.name : ''}\nAmount: KSh ${p.amount.toLocaleString()}\nDate: ${p.date}\nMonth: ${p.month}\n\nIt will be moved to Deleted Records — you can restore it anytime.`);
   if (!confirm1) return;
   const typed = prompt('Type DELETE to confirm:');
   if (typed !== 'DELETE') { showToast('❌ Deletion cancelled — you must type DELETE exactly'); return; }
+  // Archive to deletedPayments instead of destroying
+  deletedPayments.push({
+    ...p,
+    deletedAt: new Date().toISOString(),
+    deletedFrom: s ? s.name : 'Unknown stall'
+  });
   payments = payments.filter(x => x.id !== payId);
   window.payments = payments;
   await saveAll(); renderAll();
   closeModal('modal-stall');
-  showToast('🗑️ Payment deleted');
+  showToast('🗑️ Payment moved to Deleted Records');
+}
+
+async function restorePayment(payId) {
+  const p = deletedPayments.find(x => x.id === payId);
+  if (!p) return;
+  if (!confirm(`Restore this payment?\n\nAmount: KSh ${p.amount.toLocaleString()}\nDate: ${p.date}\nMonth: ${p.month}`)) return;
+  // Remove from deleted, add back to payments
+  const { deletedAt, deletedFrom, ...restored } = p;
+  payments.push(restored);
+  deletedPayments = deletedPayments.filter(x => x.id !== payId);
+  window.payments = payments;
+  await saveAll(); renderAll();
+  showToast('✅ Payment restored successfully!');
 }
 
 // ─── UTILITIES ─────────────────────────────────────────────────
@@ -2186,6 +2242,7 @@ window.confirmMoveOut = confirmMoveOut;
 window.openEditPayment = openEditPayment;
 window.saveEditPayment = saveEditPayment;
 window.deletePayment = deletePayment;
+window.restorePayment = restorePayment;
 window.openAddPayment = openAddPayment;
 window.savePayment = savePayment;
 window.showReceipt = showReceipt;
