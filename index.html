@@ -1789,17 +1789,6 @@ async function deletePayment(payId) {
   showToast('🗑️ Payment moved to Deleted Records');
 }
 
-async function permanentlyDeletePayment(payId) {
-  const p = deletedPayments.find(x => x.id === payId);
-  if (!p) return;
-  const typed = prompt(`⚠️ This will permanently delete this record with NO recovery possible.\n\nAmount: KSh ${p.amount.toLocaleString()} · ${p.month}\n\nType CONFIRM to permanently delete:`);
-  if (typed !== 'CONFIRM') { showToast('❌ Cancelled — type CONFIRM exactly to permanently delete'); return; }
-  deletedPayments = deletedPayments.filter(x => x.id !== payId);
-  await saveAll();
-  renderPayments();
-  showToast('🗑️ Permanently deleted');
-}
-
 async function restorePayment(payId) {
   const p = deletedPayments.find(x => x.id === payId);
   if (!p) return;
@@ -2285,7 +2274,6 @@ window.openEditPayment = openEditPayment;
 window.saveEditPayment = saveEditPayment;
 window.deletePayment = deletePayment;
 window.restorePayment = restorePayment;
-window.permanentlyDeletePayment = permanentlyDeletePayment;
 window.permanentlyDeletePayment = permanentlyDeletePayment;
 window.openAddPayment = openAddPayment;
 window.savePayment = savePayment;
