@@ -350,7 +350,7 @@
     </div>
     <button class="btn btn-primary" onclick="doLogin()">Sign In →</button>
     <div class="error-msg" id="login-error"></div>
-    <div id="login-hint" style="margin-top:16px; font-size:12px; color:var(--text3);">First time? Default password: <span style="font-family:'DM Mono',monospace;color:var(--text2);">admin1234</span></div>
+    <div id="login-hint" style="display:none;margin-top:16px; font-size:12px; color:var(--text3);">First time? Default password: <span style="font-family:'DM Mono',monospace;color:var(--text2);">admin1234</span></div>
   </div>
 </div>
 
@@ -459,7 +459,7 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
         <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:12px;">ℹ️ App Info</div>
         <div class="stall-row"><span>App</span><span>StallTrack</span></div>
-        <div class="stall-row"><span>Version</span><span>1.0.0</span></div>
+        <div class="stall-row"><span>Version</span><span>1.1.0</span></div>
         <div class="stall-row"><span>Data Storage</span><span style="color:var(--success);">☁️ Firebase (Google Cloud)</span></div>
         <div class="stall-row"><span>Auto Backup</span><span style="color:var(--success);">✅ Every change</span></div>
         <div class="stall-row"><span>Hosted On</span><span>GitHub Pages</span></div>
@@ -852,7 +852,7 @@ async function loadFromDB() {
       // First time — save default settings
       await saveSettingsToDB();
     }
-    // Update login hint based on whether password has been changed
+    // Update login hint — only show if password has never been changed
     const hintEl = document.getElementById('login-hint');
     if (hintEl) {
       hintEl.style.display = appSettings.passwordChanged ? 'none' : 'block';
@@ -1035,7 +1035,7 @@ function renderDashboard() {
     return !paid;
   }).length;
 
-  const depositsCollected = stalls.filter(s => s.tenant && s.tenant.depositStatus === 'Paid').reduce((a,s) => a + (s.tenant.deposit || 6500), 0);
+  const depositsCollected = stalls.filter(s => s.tenant && s.tenant.depositStatus === 'Paid').reduce((a,s) => a + (s.tenant.deposit || 0), 0);
   const depositsPending = stalls.filter(s => s.tenant && s.tenant.depositStatus !== 'Paid').length;
 
   document.getElementById('stat-grid').innerHTML = `
@@ -1311,8 +1311,8 @@ function showReceipt(p) {
 
   document.getElementById('receipt-content').innerHTML = `
     <div class="receipt-box">
-      <div class="receipt-logo">🏪 StallTrack</div>
-      <div class="receipt-title">Official Payment Receipt</div>
+      <div class="receipt-logo">🏪 ${s ? s.name : 'StallTrack'}</div>
+      <div class="receipt-title">Official Rent Payment Receipt</div>
       <hr class="receipt-divider">
       <div class="receipt-row"><span>Stall</span><span>${s ? s.name : ''}</span></div>
       <div class="receipt-row"><span>Tenant</span><span>${tenant ? tenant.name : ''}</span></div>
