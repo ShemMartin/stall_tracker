@@ -483,7 +483,7 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
         <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:12px;">ℹ️ App Info</div>
         <div class="stall-row"><span>App</span><span>StallTrack</span></div>
-        <div class="stall-row"><span>Version</span><span>1.5.0</span></div>
+        <div class="stall-row"><span>Version</span><span>1.5.1</span></div>
         <div class="stall-row"><span>Data Storage</span><span style="color:var(--success);">☁️ Firebase (Google Cloud)</span></div>
         <div class="stall-row"><span>Auto Backup</span><span style="color:var(--success);">✅ Every change</span></div>
         <div class="stall-row"><span>Hosted On</span><span>GitHub Pages</span></div>
@@ -996,6 +996,17 @@ async function loadFromDB() {
     }
     dbLoaded = true;
     window.payments = payments;
+
+    // ─── AUTO-PURGE deleted payments older than 90 days ──────────
+    const now90 = new Date();
+    now90.setDate(now90.getDate() - 90);
+    const before = deletedPayments.length;
+    deletedPayments = deletedPayments.filter(p => {
+      return p.deletedAt && new Date(p.deletedAt) > now90;
+    });
+    if (deletedPayments.length < before) {
+      await saveToDB(); // save the purged list silently
+    }
   } catch(e) {
     console.error('DB load error:', e);
     stalls = load('stalls', defaultStalls);
@@ -1685,6 +1696,8 @@ function renderPayments() {
     delList.innerHTML = sortedDel.map(p => {
       const s = stalls.find(x => x.id === p.stallId);
       const deletedDate = new Date(p.deletedAt).toLocaleDateString('en-KE');
+      const daysLeft = Math.max(0, 90 - Math.floor((Date.now() - new Date(p.deletedAt)) / (1000*60*60*24)));
+      const urgentColor = daysLeft <= 14 ? 'var(--danger)' : daysLeft <= 30 ? 'var(--warning)' : 'var(--text3)';
       return `<div class="payment-item" style="opacity:0.65;border-color:rgba(240,96,96,0.2);">
         <div class="payment-top">
           <span class="payment-amount" style="color:var(--danger);text-decoration:line-through;">KSh ${p.amount.toLocaleString()}</span>
@@ -1692,7 +1705,10 @@ function renderPayments() {
         </div>
         <div class="payment-meta" style="margin-bottom:4px;color:var(--text);font-weight:500;">${p.deletedFrom || (s ? s.name : '')} · For: ${p.month}</div>
         <div class="payment-meta">${p.method} ${p.ref ? '· ' + p.ref : ''}</div>
-        <div class="payment-meta" style="color:var(--danger);font-size:11px;margin-top:2px;">Deleted on ${deletedDate}</div>
+        <div class="payment-meta" style="margin-top:2px;display:flex;justify-content:space-between;">
+          <span style="color:var(--danger);font-size:11px;">Deleted ${deletedDate}</span>
+          <span style="color:${urgentColor};font-size:11px;">⏳ ${daysLeft} day${daysLeft!==1?'s':''} left</span>
+        </div>
         <div style="margin-top:8px;">
           <button class="btn btn-success btn-sm" onclick="restorePayment(${p.id})">↩️ Restore</button>
         </div>
