@@ -1709,12 +1709,27 @@ function renderPayments() {
           <span style="color:var(--danger);font-size:11px;">Deleted ${deletedDate}</span>
           <span style="color:${urgentColor};font-size:11px;">⏳ ${daysLeft} day${daysLeft!==1?'s':''} left</span>
         </div>
-        <div style="margin-top:8px;">
+        <div style="margin-top:8px;display:flex;gap:6px;">
           <button class="btn btn-success btn-sm" onclick="restorePayment(${p.id})">↩️ Restore</button>
+          <button class="btn btn-sm" style="background:rgba(240,96,96,0.15);color:var(--danger);border:1px solid rgba(240,96,96,0.3);" onclick="permanentlyDeletePayment(${p.id})">🗑️ Delete Forever</button>
         </div>
       </div>`;
     }).join('');
   }
+}
+
+async function permanentlyDeletePayment(payId) {
+  const p = deletedPayments.find(x => x.id === payId);
+  if (!p) return;
+  const s = stalls.find(x => x.id === p.stallId);
+  const confirm1 = confirm(`⚠️ PERMANENTLY delete this payment?\n\nStall: ${p.deletedFrom || (s ? s.name : '')}\nAmount: KSh ${p.amount.toLocaleString()}\nDate: ${p.date}\nMonth: ${p.month}\n\nThis CANNOT be undone or restored.`);
+  if (!confirm1) return;
+  const typed = prompt('Type PERMANENT to confirm forever deletion:');
+  if (typed !== 'PERMANENT') { showToast('❌ Cancelled — type PERMANENT exactly to confirm'); return; }
+  deletedPayments = deletedPayments.filter(x => x.id !== payId);
+  await saveAll();
+  renderPayments();
+  showToast('🗑️ Payment permanently deleted');
 }
 
 // ─── EDIT & DELETE PAYMENT ────────────────────────────────────
@@ -1772,6 +1787,17 @@ async function deletePayment(payId) {
   await saveAll(); renderAll();
   closeModal('modal-stall');
   showToast('🗑️ Payment moved to Deleted Records');
+}
+
+async function permanentlyDeletePayment(payId) {
+  const p = deletedPayments.find(x => x.id === payId);
+  if (!p) return;
+  const typed = prompt(`⚠️ This will permanently delete this record with NO recovery possible.\n\nAmount: KSh ${p.amount.toLocaleString()} · ${p.month}\n\nType CONFIRM to permanently delete:`);
+  if (typed !== 'CONFIRM') { showToast('❌ Cancelled — type CONFIRM exactly to permanently delete'); return; }
+  deletedPayments = deletedPayments.filter(x => x.id !== payId);
+  await saveAll();
+  renderPayments();
+  showToast('🗑️ Permanently deleted');
 }
 
 async function restorePayment(payId) {
@@ -2259,6 +2285,8 @@ window.openEditPayment = openEditPayment;
 window.saveEditPayment = saveEditPayment;
 window.deletePayment = deletePayment;
 window.restorePayment = restorePayment;
+window.permanentlyDeletePayment = permanentlyDeletePayment;
+window.permanentlyDeletePayment = permanentlyDeletePayment;
 window.openAddPayment = openAddPayment;
 window.savePayment = savePayment;
 window.showReceipt = showReceipt;
