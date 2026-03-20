@@ -564,6 +564,16 @@
 <div class="modal-overlay" id="modal-payment">
   <div class="modal">
     <div class="modal-title">Record Payment</div>
+
+    <!-- M-PESA SMS PARSER -->
+    <div style="background:rgba(200,240,96,0.06);border:1px solid rgba(200,240,96,0.2);border-radius:10px;padding:14px;margin-bottom:20px;">
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;color:var(--accent);margin-bottom:6px;">📱 M-Pesa SMS Auto-fill</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px;">Paste your M-Pesa confirmation SMS below and we'll fill the form automatically.</div>
+      <textarea id="mpesa-sms" placeholder="e.g. SBC4XYZABC Confirmed. Ksh6,500 received from JOHN KAMAU 0712345678 on 20/3/26 at 10:23 AM" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;resize:vertical;min-height:70px;"></textarea>
+      <button class="btn btn-secondary" style="width:100%;margin-top:8px;font-size:12px;" onclick="parseMpesaSMS()">⚡ Auto-fill from SMS</button>
+      <div id="sms-parse-result" style="font-size:12px;margin-top:6px;"></div>
+    </div>
+
     <div class="form-group">
       <label>Stall</label>
       <select id="pay-stall"></select>
@@ -1272,6 +1282,68 @@ function confirmMoveOut(stallId) {
   setTimeout(() => openStallDetail(stallId2), 200);
 }
 
+// ─── M-PESA SMS PARSER ────────────────────────────────────────
+function parseMpesaSMS() {
+  const sms = document.getElementById('mpesa-sms').value.trim();
+  const resultEl = document.getElementById('sms-parse-result');
+  if (!sms) { resultEl.innerHTML = `<span style="color:var(--danger);">Please paste an M-Pesa SMS first.</span>`; return; }
+
+  let found = {};
+
+  // Transaction code — e.g. SBC4XYZABC (10 chars alphanumeric at start)
+  const codeMatch = sms.match(/^([A-Z0-9]{10})\b/i);
+  if (codeMatch) found.ref = codeMatch[1].toUpperCase();
+
+  // Amount — handles "Ksh6,500", "KES 6500", "Ksh 6,500.00"
+  const amountMatch = sms.match(/(?:Ksh|KES|KSh)\.?\s*([0-9,]+(?:\.[0-9]{2})?)/i);
+  if (amountMatch) found.amount = parseInt(amountMatch[1].replace(/,/g, ''));
+
+  // Date — handles "20/3/26", "20/03/2026", "20/3/2026"
+  const dateMatch = sms.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (dateMatch) {
+    let day = dateMatch[1].padStart(2, '0');
+    let month = dateMatch[2].padStart(2, '0');
+    let year = dateMatch[3].length === 2 ? '20' + dateMatch[3] : dateMatch[3];
+    found.date = `${year}-${month}-${day}`;
+    found.payMonth = `${year}-${month}`;
+  }
+
+  // Sender name — "received from JOHN KAMAU" or "sent to JOHN KAMAU"
+  const nameMatch = sms.match(/(?:received from|sent to|from)\s+([A-Z][A-Z\s]+?)(?:\s+\d{10,}|\s+on\s|\s+New)/i);
+  if (nameMatch) found.senderName = nameMatch[1].trim();
+
+  // Phone number — 10 or 12 digit number
+  const phoneMatch = sms.match(/\b((?:254|0)[0-9]{9})\b/);
+  if (phoneMatch) found.phone = phoneMatch[1];
+
+  // Apply to form
+  let filled = [];
+  if (found.amount) { document.getElementById('pay-amount').value = found.amount; filled.push(`Amount: KSh ${found.amount.toLocaleString()}`); }
+  if (found.ref) { document.getElementById('pay-ref').value = found.ref; filled.push(`Ref: ${found.ref}`); }
+  if (found.date) { document.getElementById('pay-date').value = found.date; filled.push(`Date: ${found.date}`); }
+  if (found.payMonth) { document.getElementById('pay-month').value = found.payMonth; }
+  document.getElementById('pay-method').value = 'M-Pesa';
+
+  // Try to match sender to a tenant
+  if (found.senderName) {
+    const occupied = stalls.filter(s => s.tenant);
+    const match = occupied.find(s =>
+      s.tenant.name.toUpperCase().includes(found.senderName.toUpperCase()) ||
+      found.senderName.toUpperCase().includes(s.tenant.name.toUpperCase().split(' ')[0])
+    );
+    if (match) {
+      document.getElementById('pay-stall').value = match.id;
+      filled.push(`Tenant: ${match.tenant.name}`);
+    }
+  }
+
+  if (filled.length > 0) {
+    resultEl.innerHTML = `<span style="color:var(--success);">✅ Auto-filled: ${filled.join(' · ')}</span>`;
+  } else {
+    resultEl.innerHTML = `<span style="color:var(--warning);">⚠️ Could not read SMS format. Please fill in manually.</span>`;
+  }
+}
+
 // ─── PAYMENTS ─────────────────────────────────────────────────
 function openAddPayment(stallId) {
   const sel = document.getElementById('pay-stall');
@@ -1282,6 +1354,9 @@ function openAddPayment(stallId) {
   document.getElementById('pay-ref').value = '';
   document.getElementById('pay-notes').value = '';
   document.getElementById('pay-month').value = new Date().toISOString().slice(0,7);
+  document.getElementById('mpesa-sms').value = '';
+  document.getElementById('sms-parse-result').textContent = '';
+  document.getElementById('pay-method').value = 'M-Pesa';
   openModal('modal-payment');
 }
 
@@ -1633,6 +1708,7 @@ window.openEditTenant = openEditTenant;
 window.saveTenant = saveTenant;
 window.openMoveOut = openMoveOut;
 window.confirmMoveOut = confirmMoveOut;
+window.parseMpesaSMS = parseMpesaSMS;
 window.openAddPayment = openAddPayment;
 window.savePayment = savePayment;
 window.showReceipt = showReceipt;
