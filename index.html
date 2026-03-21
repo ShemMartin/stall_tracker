@@ -264,13 +264,18 @@
   <div class="login-box">
     <div class="login-logo" id="login-logo">🏪 StallTrack</div>
     <div class="login-sub" id="login-tagline">Stall Rent Management System</div>
+    <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(96,240,160,0.08);border:1px solid rgba(96,240,160,0.2);border-radius:20px;padding:4px 12px;font-size:11px;color:var(--success);margin-bottom:24px;">🔐 Secured by Firebase Authentication</div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="your@email.com" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
     <div class="form-group">
       <label>Password</label>
       <input type="password" id="login-password" placeholder="Enter your password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <button class="btn btn-primary" onclick="doLogin()">Sign In →</button>
     <div class="error-msg" id="login-error"></div>
-    <div id="login-hint" style="display:none;margin-top:16px;font-size:12px;color:var(--text3);">First time? Default password: <span style="font-family:'DM Mono',monospace;color:var(--text2);">admin1234</span></div>
+    <div id="login-hint" style="display:none;margin-top:16px;font-size:12px;color:var(--text3);">Use your Firebase email & password</div>
   </div>
 </div>
 
@@ -428,10 +433,14 @@
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
         <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:15px;margin-bottom:12px;">ℹ️ App Info</div>
         <div class="stall-row"><span>App</span><span>StallTrack</span></div>
-        <div class="stall-row"><span>Version</span><span>1.5.1</span></div>
+        <div class="stall-row"><span>Version</span><span>2.0.0</span></div>
+        <div class="stall-row"><span>Authentication</span><span style="color:var(--success);">🔐 Firebase Auth</span></div>
         <div class="stall-row"><span>Data Storage</span><span style="color:var(--success);">☁️ Firebase (Google Cloud)</span></div>
         <div class="stall-row"><span>Auto Backup</span><span style="color:var(--success);">✅ Every change</span></div>
         <div class="stall-row"><span>Hosted On</span><span>GitHub Pages</span></div>
+        <div style="margin-top:14px;">
+          <button class="btn btn-danger" style="width:100%;" onclick="doLogout()">🚪 Sign Out</button>
+        </div>
       </div>
     </div>
   </div>
@@ -721,6 +730,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBaCXBRwSSfjpi0Qfir7dMpleGlzGLoaEc",
@@ -733,6 +743,9 @@ const firebaseConfig = {
 
 const fireApp = initializeApp(firebaseConfig);
 const db = getFirestore(fireApp);
+const auth = getAuth(fireApp);
+const ALLOWED_UID = 'xGsnAgWQqTbevBMkbId9xz0uh9c2';
+const ALLOWED_EMAIL = 'mwangimartin343@gmail.com';
 const DB_ID = 'owner';
 const SETTINGS_ID = 'settings';
 
@@ -818,34 +831,64 @@ function showToast(msg) {
 window.saveAll = saveAll;
 window.showToast = showToast;
 
+// ─── AUTH STATE LISTENER ──────────────────────────────────────
+onAuthStateChanged(auth, (user) => {
+  if (user && user.uid === ALLOWED_UID && user.email === ALLOWED_EMAIL) {
+    // Already logged in — auto-load app
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    loadFromDB().then(() => renderAll());
+  }
+});
+
 async function doLogin() {
-  const pw = document.getElementById('login-password').value;
+  const emailEl = document.getElementById('login-email');
+  const pwEl = document.getElementById('login-password');
+  const email = emailEl ? emailEl.value.trim() : '';
+  const pw = pwEl.value;
   const errEl = document.getElementById('login-error');
   const btn = document.querySelector('#login-screen .btn-primary');
-  btn.textContent = 'Checking...'; btn.disabled = true;
+  errEl.textContent = '';
+  btn.textContent = 'Signing in...'; btn.disabled = true;
   try {
-    showLoading('Verifying...');
-    const settingsSnap = await getDoc(doc(db, 'stalltrack', SETTINGS_ID));
-    if (settingsSnap.exists()) appSettings = { ...appSettings, ...settingsSnap.data() };
-    hideLoading();
-    if (pw === appSettings.password) {
-      await loadFromDB();
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'flex';
-      renderAll();
-    } else { errEl.textContent = 'Incorrect password. Try again.'; }
+    showLoading('Authenticating...');
+    const cred = await signInWithEmailAndPassword(auth, email, pw);
+    // Double-check both UID and email match
+    if (cred.user.uid !== ALLOWED_UID || cred.user.email !== ALLOWED_EMAIL) {
+      await signOut(auth);
+      hideLoading();
+      errEl.textContent = '❌ Access denied.';
+      btn.textContent = 'Sign In →'; btn.disabled = false;
+      return;
+    }
+    await loadFromDB();
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    renderAll();
   } catch(e) {
     hideLoading();
-    if (pw === appSettings.password) {
-      stalls = load('stalls', defaultStalls); payments = load('payments', []); utilities = load('utilities', []); maintenance = load('maintenance', []);
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app').style.display = 'flex';
-      renderAll(); showToast('⚠️ Offline mode');
-    } else { errEl.textContent = 'Incorrect password. Try again.'; }
+    console.error(e);
+    if (e.code === 'auth/invalid-credential' || e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found') {
+      errEl.textContent = '❌ Incorrect email or password.';
+    } else if (e.code === 'auth/too-many-requests') {
+      errEl.textContent = '⚠️ Too many attempts. Try again later.';
+    } else if (e.code === 'auth/network-request-failed') {
+      errEl.textContent = '⚠️ No internet connection.';
+    } else {
+      errEl.textContent = '⚠️ Login failed. Check your connection.';
+    }
   }
   btn.textContent = 'Sign In →'; btn.disabled = false;
 }
-function doLogout() { document.getElementById('app').style.display = 'none'; document.getElementById('login-screen').style.display = 'flex'; document.getElementById('login-password').value = ''; }
+
+async function doLogout() {
+  await signOut(auth);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+  const pwEl = document.getElementById('login-password');
+  if (pwEl) pwEl.value = '';
+  stalls = defaultStalls; payments = []; utilities = []; maintenance = []; deletedPayments = [];
+}
 window.doLogin = doLogin; window.doLogout = doLogout;
 
 function showPage(name, el) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); document.getElementById('page-' + name).classList.add('active'); el.classList.add('active'); }
