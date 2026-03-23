@@ -655,60 +655,6 @@
   </div>
 </div>
 
-<!-- SET SECURITY QUESTION MODAL -->
-<div class="modal-overlay" id="modal-security-q">
-  <div class="modal">
-    <div class="modal-title">🔐 Set Security Question</div>
-    <div class="form-group">
-      <label>Choose a Question</label>
-      <select id="sq-question">
-        <option value="What is your mother's maiden name?">What is your mother's maiden name?</option>
-        <option value="What was the name of your first pet?">What was the name of your first pet?</option>
-        <option value="What was the name of your primary school?">What was the name of your primary school?</option>
-        <option value="What is your eldest sibling's name?">What is your eldest sibling's name?</option>
-        <option value="What town were you born in?">What town were you born in?</option>
-        <option value="What is your favourite food?">What is your favourite food?</option>
-      </select>
-    </div>
-    <div class="form-group"><label>Your Answer</label><input type="text" id="sq-answer" placeholder="Type your answer (case-insensitive)"></div>
-    <div class="form-group"><label>Confirm Answer</label><input type="text" id="sq-answer2" placeholder="Type again to confirm"></div>
-    <div class="error-msg" id="sq-error"></div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-security-q')">Cancel</button>
-      <button class="btn btn-primary" onclick="saveSecurityQuestion()">Save Question</button>
-    </div>
-  </div>
-</div>
-
-<!-- CHANGE PASSWORD MODAL -->
-<div class="modal-overlay" id="modal-change-pw">
-  <div class="modal">
-    <div id="cpw-step1">
-      <div class="modal-title">🔑 Change Password</div>
-      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:16px;">
-        <div style="font-size:12px;color:var(--text2);margin-bottom:6px;">Answer your security question:</div>
-        <div id="cpw-question" style="font-weight:600;color:var(--text);"></div>
-      </div>
-      <div class="form-group"><label>Your Answer</label><input type="text" id="cpw-answer" placeholder="Type your answer"></div>
-      <div class="error-msg" id="cpw-error"></div>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closeModal('modal-change-pw')">Cancel</button>
-        <button class="btn btn-primary" onclick="verifySQAnswer()">Verify →</button>
-      </div>
-    </div>
-    <div id="cpw-step2" style="display:none;">
-      <div class="modal-title">✅ Set New Password</div>
-      <div class="form-group"><label>New Password</label><input type="password" id="cpw-new" placeholder="Enter new password"></div>
-      <div class="form-group"><label>Confirm New Password</label><input type="password" id="cpw-new2" placeholder="Repeat new password"></div>
-      <div class="error-msg" id="cpw-error2"></div>
-      <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closeModal('modal-change-pw')">Cancel</button>
-        <button class="btn btn-primary" onclick="doChangePassword()">Save New Password</button>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- EDIT PAYMENT MODAL -->
 <div class="modal-overlay" id="modal-edit-payment">
   <div class="modal">
@@ -1234,6 +1180,20 @@ function parseMpesaSMS() {
   resultEl.innerHTML = filled.length > 0 ? `<span style="color:var(--success);">✅ Auto-filled: ${filled.join(' · ')}</span>` : `<span style="color:var(--warning);">⚠️ Could not read SMS format. Please fill in manually.</span>`;
 }
 
+// ─── RECEIPT NUMBER GENERATOR ─────────────────────────────────
+function generateReceiptNo(date) {
+  // Format: YYYYMMDDXXXX — date + 4-digit sequential per day
+  const d = date ? new Date(date) : new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const datePrefix = `${yyyy}${mm}${dd}`;
+  // Count payments already made on this date
+  const sameDayCount = payments.filter(p => p.receiptNo && p.receiptNo.startsWith(datePrefix)).length;
+  const seq = String(sameDayCount + 1).padStart(4, '0');
+  return `${datePrefix}${seq}`;
+}
+
 function openAddPayment(stallId) {
   const sel = document.getElementById('pay-stall');
   sel.innerHTML = stalls.filter(s => s.tenant).map(s => `<option value="${s.id}" ${s.id===stallId?'selected':''}>${s.name} — ${s.tenant.name}</option>`).join('');
@@ -1260,7 +1220,8 @@ async function savePayment() {
   if (!stallId || !amount || !date || !month) { alert('Please fill required fields.'); return; }
   const s2 = stalls.find(x => x.id === stallId);
   const tenantId = s2 && s2.tenant ? s2.tenant.id : null;
-  const p = { id: Date.now(), stallId, tenantId, amount, date, method, ref, month, notes };
+  const receiptNo = generateReceiptNo(date);
+  const p = { id: Date.now(), receiptNo, stallId, tenantId, amount, date, method, ref, month, notes };
   payments.push(p);
   await saveAll(); renderAll(); closeModal('modal-payment'); showReceipt(p);
 }
@@ -1291,7 +1252,7 @@ function showReceipt(p) {
       ${p.ref ? `<div class="receipt-row"><span>Ref. No.</span><span>${p.ref}</span></div>` : ''}
       ${p.notes ? `<div class="receipt-row"><span>Notes</span><span>${p.notes}</span></div>` : ''}
       <div class="receipt-row total"><span>TOTAL PAID</span><span>KSh ${p.amount.toLocaleString()}</span></div>
-      <div class="receipt-footer">Receipt #${String(p.id).slice(-8)} · Generated ${new Date().toLocaleDateString()}<br>Thank you for your payment!</div>
+      <div class="receipt-footer">Receipt #${p.receiptNo || String(p.id).slice(-8)} · Generated ${new Date().toLocaleDateString()}<br>Thank you for your payment!</div>
     </div>`;
   openModal('modal-receipt');
 }
@@ -1299,7 +1260,7 @@ function showReceipt(p) {
 function shareReceipt() {
   if (!lastReceipt) return;
   const { p, s, tenant } = lastReceipt;
-  const text = `🏪 *RENT RECEIPT*\n\n*Stall:* ${s.name}\n*Tenant:* ${tenant ? tenant.name : ''}\n*Month:* ${p.month}\n*Amount:* KSh ${p.amount.toLocaleString()}\n*Method:* ${p.method}\n*Ref No:* ${p.ref || 'N/A'}\n*Date:* ${p.date}\n\nThank you for your payment! ✅`;
+  const text = `🏪 *RENT RECEIPT*\n\n*Receipt No:* #${p.receiptNo || String(p.id).slice(-8)}\n*Stall:* ${s.name}\n*Tenant:* ${tenant ? tenant.name : ''}\n*Month:* ${p.month}\n*Amount:* KSh ${p.amount.toLocaleString()}\n*Method:* ${p.method}\n*Ref No:* ${p.ref || 'N/A'}\n*Date:* ${p.date}\n\nThank you for your payment! ✅`;
   const phone = tenant ? tenant.phone.replace(/\D/g,'') : '';
   const waPhone = phone.startsWith('0') ? '254' + phone.slice(1) : phone;
   window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(text)}`, '_blank');
@@ -1308,7 +1269,7 @@ function shareReceipt() {
 function downloadReceiptPDF() {
   if (!lastReceipt) return;
   const { p, s, tenant } = lastReceipt;
-  const receiptNo = String(p.id).slice(-8);
+  const receiptNo = p.receiptNo || String(p.id).slice(-8);
   const generatedDate = new Date().toLocaleDateString('en-KE', { day:'numeric', month:'long', year:'numeric' });
   const b = appSettings.branding || {};
   const bizName = b.name || 'StallTrack';
@@ -1475,7 +1436,7 @@ async function shareReceiptImage() {
   // Build a hidden receipt div styled for capture
   const div = document.createElement('div');
   div.style.cssText = 'position:fixed;left:-9999px;top:0;width:420px;background:#f5f5f5;padding:20px;font-family:Arial,sans-serif;';
-  const receiptNo = String(p.id).slice(-8);
+  const receiptNo = p.receiptNo || String(p.id).slice(-8);
   const generatedDate = new Date().toLocaleDateString('en-KE', { day:'numeric', month:'long', year:'numeric' });
   div.innerHTML = `
     <div style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.12);">
@@ -1551,6 +1512,7 @@ function renderPayments() {
       <div class="payment-top"><span class="payment-amount">KSh ${p.amount.toLocaleString()}</span><span class="payment-date">${p.date}</span></div>
       <div class="payment-meta" style="margin-bottom:4px;color:var(--text);font-weight:500;">${s ? s.name : ''} ${s && s.tenant ? '· ' + s.tenant.name : ''}</div>
       <div class="payment-meta">${p.method} · For: ${p.month} <span class="payment-ref">${p.ref ? '· ' + p.ref : ''}</span></div>
+      ${p.receiptNo ? `<div class="payment-meta" style="margin-top:2px;">🧾 <span style="font-family:'DM Mono',monospace;color:var(--accent2);">#${p.receiptNo}</span></div>` : ''}
       ${p.notes ? `<div class="payment-meta" style="margin-top:2px;">${p.notes}</div>` : ''}
       ${p.editedAt ? `<div class="payment-meta" style="margin-top:2px;color:var(--text3);font-size:11px;">✏️ Edited ${new Date(p.editedAt).toLocaleDateString('en-KE')}</div>` : ''}
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
@@ -1816,60 +1778,6 @@ function renderSettings() {
     if (lastBackup) { const d = new Date(lastBackup); const daysSince = Math.floor((Date.now()-d)/(1000*60*60*24)); const color = daysSince>7?'var(--warning)':'var(--success)'; backupEl.innerHTML = `<span style="color:${color};">Last backup: ${d.toLocaleDateString('en-KE')} (${daysSince===0?'today':daysSince+' day(s) ago'})</span>`; }
     else { backupEl.innerHTML = `<span style="color:var(--danger);">⚠️ No backup made yet — do one now!</span>`; }
   }
-  const statusEl = document.getElementById('security-q-status');
-  if (statusEl) {
-    statusEl.innerHTML = appSettings.securityQuestion
-      ? `<div style="background:rgba(96,240,160,0.08);border:1px solid rgba(96,240,160,0.2);border-radius:8px;padding:12px;font-size:13px;"><span style="color:var(--success);font-weight:600;">✓ Security question is set</span><br><span style="color:var(--text2);margin-top:4px;display:block;">Q: ${appSettings.securityQuestion}</span></div>`
-      : `<div style="background:rgba(240,184,96,0.08);border:1px solid rgba(240,184,96,0.2);border-radius:8px;padding:12px;font-size:13px;color:var(--warning);">⚠️ No security question set yet. Set one before you can change your password.</div>`;
-  }
-  const changePwBtn = document.getElementById('change-pw-btn');
-  if (changePwBtn) { changePwBtn.disabled = !appSettings.securityQuestion; changePwBtn.style.opacity = appSettings.securityQuestion ? '1' : '0.4'; }
-}
-
-function openSetSecurityQ() {
-  document.getElementById('sq-answer').value = ''; document.getElementById('sq-answer2').value = ''; document.getElementById('sq-error').textContent = '';
-  if (appSettings.securityQuestion) { const sel = document.getElementById('sq-question'); for (let o of sel.options) { if (o.value === appSettings.securityQuestion) { o.selected = true; break; } } }
-  openModal('modal-security-q');
-}
-
-async function saveSecurityQuestion() {
-  const question = document.getElementById('sq-question').value;
-  const answer = document.getElementById('sq-answer').value.trim();
-  const answer2 = document.getElementById('sq-answer2').value.trim();
-  const errEl = document.getElementById('sq-error');
-  if (!answer) { errEl.textContent = 'Please enter an answer.'; return; }
-  if (answer.toLowerCase() !== answer2.toLowerCase()) { errEl.textContent = 'Answers do not match.'; return; }
-  appSettings.securityQuestion = question; appSettings.securityAnswer = answer.toLowerCase().trim();
-  await saveSettingsToDB(); closeModal('modal-security-q'); renderSettings(); showToast('✅ Security question saved across all devices!');
-}
-
-function openChangePassword() {
-  if (!appSettings.securityQuestion) { alert('Please set a security question first.'); return; }
-  document.getElementById('cpw-question').textContent = appSettings.securityQuestion;
-  document.getElementById('cpw-answer').value = ''; document.getElementById('cpw-new').value = ''; document.getElementById('cpw-new2').value = '';
-  document.getElementById('cpw-error').textContent = ''; document.getElementById('cpw-error2').textContent = '';
-  document.getElementById('cpw-step1').style.display = 'block'; document.getElementById('cpw-step2').style.display = 'none';
-  openModal('modal-change-pw');
-}
-
-function verifySQAnswer() {
-  const answer = document.getElementById('cpw-answer').value.trim().toLowerCase();
-  const errEl = document.getElementById('cpw-error');
-  if (!answer) { errEl.textContent = 'Please enter your answer.'; return; }
-  if (answer !== appSettings.securityAnswer) { errEl.textContent = '❌ Incorrect answer. Please try again.'; return; }
-  document.getElementById('cpw-step1').style.display = 'none'; document.getElementById('cpw-step2').style.display = 'block';
-}
-
-async function doChangePassword() {
-  const newPw = document.getElementById('cpw-new').value;
-  const newPw2 = document.getElementById('cpw-new2').value;
-  const errEl = document.getElementById('cpw-error2');
-  if (!newPw || newPw.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
-  if (newPw !== newPw2) { errEl.textContent = 'Passwords do not match.'; return; }
-  appSettings.password = newPw; appSettings.passwordChanged = true;
-  await saveSettingsToDB();
-  const hintEl = document.getElementById('login-hint'); if (hintEl) hintEl.style.display = 'none';
-  closeModal('modal-change-pw'); showToast('✅ Password updated on all devices!');
 }
 
 // ─── BRANDING ─────────────────────────────────────────────────
@@ -1983,8 +1891,6 @@ window.openAddUtility = openAddUtility; window.saveUtility = saveUtility;
 window.openAddMaintenance = openAddMaintenance; window.saveMaintenance = saveMaintenance; window.toggleMaintStatus = toggleMaintStatus;
 window.exportBackup = exportBackup; window.importBackup = importBackup;
 window.handleLogoUpload = handleLogoUpload; window.removeLogo = removeLogo; window.saveBranding = saveBranding;
-window.openSetSecurityQ = openSetSecurityQ; window.saveSecurityQuestion = saveSecurityQuestion;
-window.openChangePassword = openChangePassword; window.verifySQAnswer = verifySQAnswer; window.doChangePassword = doChangePassword;
 
 // ─── AUTO-LOGOUT ON INACTIVITY ────────────────────────────────
 const INACTIVITY_TIMEOUT = 5 * 60 * 1000;  // 5 min before warning
@@ -2014,8 +1920,9 @@ function showLogoutWarning() {
     if (el) el.textContent = countdownValue;
     if (countdownValue <= 0) {
       clearInterval(countdownTimer);
-      doLogout();
-      showToast('🔒 Logged out due to inactivity');
+      doLogout().then(() => {
+        showToast('🔒 Logged out due to inactivity');
+      }).catch(() => {});
     }
   }, 1000);
 }
