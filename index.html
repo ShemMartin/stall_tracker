@@ -306,6 +306,15 @@
       <div class="page-title">Dashboard</div>
       <div class="page-sub" id="dash-date"></div>
       <div id="backup-reminder" style="display:none;background:rgba(240,184,96,0.1);border:1px solid rgba(240,184,96,0.3);border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--warning);align-items:center;justify-content:space-between;gap:10px;"></div>
+      <!-- Quick SMS Receipt -->
+      <button onclick="openSMSReceipt()" style="width:100%;background:linear-gradient(135deg,rgba(200,240,96,0.15),rgba(96,200,240,0.15));border:1px solid var(--accent);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:16px;text-align:left;">
+        <span style="font-size:28px;">📱</span>
+        <div>
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:var(--accent);">Quick Receipt from M-Pesa SMS</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px;">Paste your SMS → confirm details → receipt done</div>
+        </div>
+        <span style="margin-left:auto;color:var(--accent);font-size:18px;">→</span>
+      </button>
       <div class="stat-grid" id="stat-grid"></div>
       <div class="section-header"><div class="section-title">Stalls Overview</div></div>
       <div id="stalls-overview"></div>
@@ -551,6 +560,65 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('modal-expense')">Cancel</button>
       <button class="btn btn-primary" onclick="saveExpense()">Save Expense</button>
+    </div>
+  </div>
+</div>
+
+<!-- SMS QUICK RECEIPT MODAL -->
+<div class="modal-overlay" id="modal-sms-receipt">
+  <div class="modal">
+    <!-- STEP 1: Paste SMS -->
+    <div id="sms-step1">
+      <div class="modal-title">📱 Paste M-Pesa SMS</div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px;">Copy the confirmation SMS from your M-Pesa messages and paste it below.</div>
+      <textarea id="sms-quick-input" placeholder="e.g. QJK2H4LWST Confirmed. Ksh6,500 received from JOHN KAMAU 0712345678 on 22/3/26 at 10:23 AM" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:12px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;outline:none;resize:vertical;min-height:100px;line-height:1.5;"></textarea>
+      <div id="sms-quick-error" style="color:var(--danger);font-size:12px;margin-top:6px;display:none;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('modal-sms-receipt')">Cancel</button>
+        <button class="btn btn-primary" onclick="parseSMSQuick()">⚡ Parse SMS →</button>
+      </div>
+    </div>
+
+    <!-- STEP 2: Confirm details -->
+    <div id="sms-step2" style="display:none;">
+      <div class="modal-title">✅ Confirm Payment Details</div>
+
+      <!-- Parsed summary card -->
+      <div id="sms-parsed-card" style="background:rgba(200,240,96,0.06);border:1px solid rgba(200,240,96,0.2);border-radius:10px;padding:14px;margin-bottom:16px;"></div>
+
+      <!-- Select stall -->
+      <div class="form-group">
+        <label>Which Stall / Tenant is this for?</label>
+        <select id="sms-stall-select"></select>
+      </div>
+
+      <!-- Editable fields in case of mis-parse -->
+      <div style="font-size:11px;color:var(--text2);margin-bottom:10px;">✏️ Tap any field to correct if needed:</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div class="form-group" style="margin:0;">
+          <label>Amount (KSh)</label>
+          <input type="number" id="sms-amount">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Date</label>
+          <input type="date" id="sms-date">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div class="form-group" style="margin:0;">
+          <label>Month Paid For</label>
+          <input type="month" id="sms-month">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label>Ref No.</label>
+          <input type="text" id="sms-ref">
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="smsGoBack()">← Back</button>
+        <button class="btn btn-primary" onclick="confirmSMSPayment()">💾 Save & Generate Receipt</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1234,31 +1302,144 @@ async function confirmMoveOut() {
   setTimeout(() => openStallDetail(stallId), 200);
 }
 
+// ─── SHARED SMS PARSER ────────────────────────────────────────
+function parseMpesaSMSText(sms) {
+  const found = {};
+
+  // Transaction code — 10 char alphanumeric at start or anywhere
+  const codeMatch = sms.match(/\b([A-Z0-9]{10})\b/i);
+  if (codeMatch) found.ref = codeMatch[1].toUpperCase();
+
+  // Amount — handles: Ksh6,500 / Ksh 6,500 / KES6500 / KSh6,500.00
+  const amountMatch = sms.match(/(?:Ksh|KES|KSh)\.?\s*([0-9,]+(?:\.[0-9]{2})?)/i);
+  if (amountMatch) found.amount = parseInt(amountMatch[1].replace(/,/g, ''));
+
+  // Date — handles: 22/3/26 / 22/03/2026 / 22/3/2026
+  const dateMatch = sms.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+  if (dateMatch) {
+    const day = dateMatch[1].padStart(2, '0');
+    const mon = dateMatch[2].padStart(2, '0');
+    const yr = dateMatch[3].length === 2 ? '20' + dateMatch[3] : dateMatch[3];
+    found.date = `${yr}-${mon}-${day}`;
+    found.payMonth = `${yr}-${mon}`;
+  }
+
+  // Sender name
+  const nameMatch = sms.match(/(?:received from|sent to|from)\s+([A-Z][A-Z\s]+?)(?:\s+\d{9,}|\s+on\s|\s+New\s)/i);
+  if (nameMatch) found.senderName = nameMatch[1].trim();
+
+  // Sender phone
+  const phoneMatch = sms.match(/\b((?:254|0)[17]\d{8})\b/);
+  if (phoneMatch) found.phone = phoneMatch[1];
+
+  // Paybill / Till detection
+  if (/paybill|till|buy goods/i.test(sms)) found.type = 'Paybill/Till';
+  else if (/received from/i.test(sms)) found.type = 'Received';
+  else if (/sent to/i.test(sms)) found.type = 'Sent';
+
+  return found;
+}
+
+// Used by Add Payment modal (existing form auto-fill)
 function parseMpesaSMS() {
   const sms = document.getElementById('mpesa-sms').value.trim();
   const resultEl = document.getElementById('sms-parse-result');
   if (!sms) { resultEl.innerHTML = `<span style="color:var(--danger);">Please paste an M-Pesa SMS first.</span>`; return; }
-  let found = {};
-  const codeMatch = sms.match(/^([A-Z0-9]{10})\b/i);
-  if (codeMatch) found.ref = codeMatch[1].toUpperCase();
-  const amountMatch = sms.match(/(?:Ksh|KES|KSh)\.?\s*([0-9,]+(?:\.[0-9]{2})?)/i);
-  if (amountMatch) found.amount = parseInt(amountMatch[1].replace(/,/g, ''));
-  const dateMatch = sms.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
-  if (dateMatch) { let day = dateMatch[1].padStart(2,'0'), month = dateMatch[2].padStart(2,'0'), year = dateMatch[3].length===2?'20'+dateMatch[3]:dateMatch[3]; found.date=`${year}-${month}-${day}`; found.payMonth=`${year}-${month}`; }
-  const nameMatch = sms.match(/(?:received from|sent to|from)\s+([A-Z][A-Z\s]+?)(?:\s+\d{10,}|\s+on\s|\s+New)/i);
-  if (nameMatch) found.senderName = nameMatch[1].trim();
+  const found = parseMpesaSMSText(sms);
   let filled = [];
   if (found.amount) { document.getElementById('pay-amount').value = found.amount; filled.push(`Amount: KSh ${found.amount.toLocaleString()}`); }
   if (found.ref) { document.getElementById('pay-ref').value = found.ref; filled.push(`Ref: ${found.ref}`); }
   if (found.date) { document.getElementById('pay-date').value = found.date; filled.push(`Date: ${found.date}`); }
   if (found.payMonth) document.getElementById('pay-month').value = found.payMonth;
   document.getElementById('pay-method').value = 'M-Pesa';
-  if (found.senderName) {
-    const match = stalls.filter(s=>s.tenant).find(s => s.tenant.name.toUpperCase().includes(found.senderName.toUpperCase()) || found.senderName.toUpperCase().includes(s.tenant.name.toUpperCase().split(' ')[0]));
-    if (match) { document.getElementById('pay-stall').value = match.id; filled.push(`Tenant: ${match.tenant.name}`); }
-  }
-  resultEl.innerHTML = filled.length > 0 ? `<span style="color:var(--success);">✅ Auto-filled: ${filled.join(' · ')}</span>` : `<span style="color:var(--warning);">⚠️ Could not read SMS format. Please fill in manually.</span>`;
+  resultEl.innerHTML = filled.length > 0
+    ? `<span style="color:var(--success);">✅ Auto-filled: ${filled.join(' · ')}</span>`
+    : `<span style="color:var(--warning);">⚠️ Could not read SMS. Fill manually.</span>`;
 }
+
+// ─── QUICK SMS RECEIPT ────────────────────────────────────────
+function openSMSReceipt() {
+  document.getElementById('sms-quick-input').value = '';
+  document.getElementById('sms-quick-error').style.display = 'none';
+  document.getElementById('sms-step1').style.display = 'block';
+  document.getElementById('sms-step2').style.display = 'none';
+  openModal('modal-sms-receipt');
+}
+
+function smsGoBack() {
+  document.getElementById('sms-step1').style.display = 'block';
+  document.getElementById('sms-step2').style.display = 'none';
+}
+
+function parseSMSQuick() {
+  const sms = document.getElementById('sms-quick-input').value.trim();
+  const errEl = document.getElementById('sms-quick-error');
+  if (!sms) { errEl.textContent = 'Please paste your M-Pesa SMS first.'; errEl.style.display = 'block'; return; }
+
+  const found = parseMpesaSMSText(sms);
+
+  if (!found.amount) {
+    errEl.textContent = '⚠️ Could not detect amount. Make sure you paste the full M-Pesa SMS.';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  errEl.style.display = 'none';
+
+  // Populate stall selector
+  const sel = document.getElementById('sms-stall-select');
+  const occupied = stalls.filter(s => s.tenant);
+  if (occupied.length === 0) { errEl.textContent = 'No occupied stalls found. Please assign tenants first.'; errEl.style.display = 'block'; return; }
+  sel.innerHTML = occupied.map(s => `<option value="${s.id}">${s.name} — ${s.tenant.name}</option>`).join('');
+
+  // Fill editable fields
+  document.getElementById('sms-amount').value = found.amount || '';
+  document.getElementById('sms-date').value = found.date || new Date().toISOString().slice(0, 10);
+  document.getElementById('sms-month').value = found.payMonth || new Date().toISOString().slice(0, 7);
+  document.getElementById('sms-ref').value = found.ref || '';
+
+  // Build parsed summary card
+  const rows = [
+    ['💰 Amount', found.amount ? `KSh ${found.amount.toLocaleString()}` : '—', !!found.amount],
+    ['📅 Date', found.date || '—', !!found.date],
+    ['🔖 Ref No.', found.ref || '—', !!found.ref],
+    ['👤 Sender', found.senderName || (found.phone || '—'), !!(found.senderName || found.phone)],
+    ['📋 Type', found.type || 'M-Pesa', true],
+  ];
+
+  document.getElementById('sms-parsed-card').innerHTML = `
+    <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:12px;color:var(--accent);margin-bottom:10px;">📊 Detected from SMS:</div>
+    ${rows.map(([label, val, ok]) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+        <span style="font-size:12px;color:var(--text2);">${label}</span>
+        <span style="font-size:12px;font-family:'DM Mono',monospace;color:${ok ? 'var(--text)' : 'var(--text3)'};">${val}</span>
+      </div>`).join('')}
+  `;
+
+  // Switch to step 2
+  document.getElementById('sms-step1').style.display = 'none';
+  document.getElementById('sms-step2').style.display = 'block';
+}
+
+async function confirmSMSPayment() {
+  const stallId = parseInt(document.getElementById('sms-stall-select').value);
+  const amount = parseInt(document.getElementById('sms-amount').value);
+  const date = document.getElementById('sms-date').value;
+  const month = document.getElementById('sms-month').value;
+  const ref = document.getElementById('sms-ref').value.trim();
+  if (!stallId || !amount || !date || !month) { alert('Please fill all required fields.'); return; }
+  const s2 = stalls.find(x => x.id === stallId);
+  const tenantId = s2 && s2.tenant ? s2.tenant.id : null;
+  const receiptNo = generateReceiptNo(date);
+  const p = { id: Date.now(), receiptNo, stallId, tenantId, amount, date, method: 'M-Pesa', ref, month, notes: '' };
+  payments.push(p);
+  window.payments = payments;
+  await saveAll(); renderAll();
+  closeModal('modal-sms-receipt');
+  showReceipt(p);
+  showToast('✅ Payment saved!');
+}
+
 
 // ─── RECEIPT NUMBER GENERATOR ─────────────────────────────────
 function generateReceiptNo(date) {
@@ -2137,6 +2318,7 @@ window.openEditPayment = openEditPayment; window.saveEditPayment = saveEditPayme
 window.deletePayment = deletePayment; window.restorePayment = restorePayment; window.permanentlyDeletePayment = permanentlyDeletePayment;
 window.openAddPayment = openAddPayment; window.savePayment = savePayment;
 window.parseMpesaSMS = parseMpesaSMS; window.showReceipt = showReceipt; window.shareReceipt = shareReceipt; window.downloadReceiptPDF = downloadReceiptPDF; window.shareReceiptImage = shareReceiptImage; window.shareReceiptPDFWhatsApp = shareReceiptPDFWhatsApp;
+window.openSMSReceipt = openSMSReceipt; window.smsGoBack = smsGoBack; window.parseSMSQuick = parseSMSQuick; window.confirmSMSPayment = confirmSMSPayment;
 window.openAddUtility = openAddUtility; window.saveUtility = saveUtility;
 window.openAddMaintenance = openAddMaintenance; window.saveMaintenance = saveMaintenance; window.toggleMaintStatus = toggleMaintStatus;
 window.openAddExpense = openAddExpense; window.saveExpense = saveExpense; window.deleteExpense = deleteExpense; window.filterExpenses = filterExpenses; window.renderExpenses = renderExpenses;
