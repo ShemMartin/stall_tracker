@@ -355,6 +355,27 @@
       <div id="maintenance-list"></div>
     </div>
 
+    <!-- EXPENSES -->
+    <div class="page" id="page-expenses">
+      <div class="page-title">Expenses</div>
+      <div class="page-sub">Track what you spend on your property</div>
+      <div class="section-header" style="margin-bottom:14px;">
+        <button class="btn btn-primary btn-sm" onclick="openAddExpense()">+ Add Expense</button>
+      </div>
+      <!-- Summary bar -->
+      <div id="expense-summary" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;"></div>
+      <!-- Filter by category -->
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;margin-bottom:12px;scrollbar-width:none;">
+        <button class="exp-filter-btn active" onclick="filterExpenses('all',this)" style="white-space:nowrap;padding:6px 14px;border-radius:20px;border:1px solid var(--accent);background:var(--accent);color:#0f0f0f;font-family:'Syne',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">All</button>
+        <button class="exp-filter-btn" onclick="filterExpenses('Materials',this)" style="white-space:nowrap;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">🔧 Materials</button>
+        <button class="exp-filter-btn" onclick="filterExpenses('Labour',this)" style="white-space:nowrap;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">👷 Labour</button>
+        <button class="exp-filter-btn" onclick="filterExpenses('Cleaning',this)" style="white-space:nowrap;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">🧹 Cleaning</button>
+        <button class="exp-filter-btn" onclick="filterExpenses('Permits',this)" style="white-space:nowrap;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">📋 Permits</button>
+        <button class="exp-filter-btn" onclick="filterExpenses('Other',this)" style="white-space:nowrap;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:none;color:var(--text2);font-family:'Syne',sans-serif;font-weight:700;font-size:11px;cursor:pointer;">📦 Other</button>
+      </div>
+      <div id="expenses-list"></div>
+    </div>
+
     <!-- REPORTS -->
     <div class="page" id="page-reports">
       <div class="page-title">Reports</div>
@@ -467,6 +488,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
       Repairs
     </button>
+    <button class="nav-item" onclick="showPage('expenses',this);renderExpenses()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+      Expenses
+    </button>
     <button class="nav-item" onclick="showPage('reports',this);renderReport()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
       Reports
@@ -476,6 +501,58 @@
       Settings
     </button>
   </nav>
+</div>
+
+<!-- ADD EXPENSE MODAL -->
+<div class="modal-overlay" id="modal-expense">
+  <div class="modal">
+    <div class="modal-title" id="modal-expense-title">💸 Add Expense</div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="exp-category">
+        <option value="Materials">🔧 Materials (taps, meters, pipes, locks...)</option>
+        <option value="Labour">👷 Labour (plumber, electrician, fundi...)</option>
+        <option value="Cleaning">🧹 Cleaning & maintenance supplies</option>
+        <option value="Permits">📋 Permits & licenses</option>
+        <option value="Other">📦 Other general expenses</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <input type="text" id="exp-description" placeholder="e.g. Sub-meter for water, New door lock...">
+    </div>
+    <div class="form-group">
+      <label>Amount (KSh)</label>
+      <input type="number" id="exp-amount" placeholder="e.g. 2500">
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="exp-date">
+    </div>
+    <div class="form-group">
+      <label>Linked To</label>
+      <select id="exp-stall">
+        <option value="general">🏢 General (whole property)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Supplier / Vendor (optional)</label>
+      <input type="text" id="exp-supplier" placeholder="e.g. Nairobi Hardware, Mama Njeri Plumbing...">
+    </div>
+    <div class="form-group">
+      <label>Receipt / Invoice No. (optional)</label>
+      <input type="text" id="exp-receipt" placeholder="e.g. INV-001">
+    </div>
+    <div class="form-group">
+      <label>Notes (optional)</label>
+      <textarea id="exp-notes" placeholder="Any extra details..."></textarea>
+    </div>
+    <input type="hidden" id="exp-edit-id">
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-expense')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveExpense()">Save Expense</button>
+    </div>
+  </div>
 </div>
 
 <!-- RENAME STALL MODAL -->
@@ -724,6 +801,7 @@ let payments = [];
 let utilities = [];
 let maintenance = [];
 let deletedPayments = [];
+let expenses = [];
 
 function showLoading(msg) { document.getElementById('db-loading').style.display = 'flex'; document.getElementById('db-loading-msg').textContent = msg || 'Loading...'; }
 function hideLoading() { document.getElementById('db-loading').style.display = 'none'; }
@@ -744,6 +822,7 @@ async function loadFromDB() {
       utilities = data.utilities || [];
       maintenance = data.maintenance || [];
       deletedPayments = data.deletedPayments || [];
+      expenses = data.expenses || [];
     } else { await saveToDB(); }
     window.payments = payments;
     applyBranding();
@@ -758,6 +837,7 @@ async function loadFromDB() {
     payments = load('payments', []);
     utilities = load('utilities', []);
     maintenance = load('maintenance', []);
+    expenses = load('expenses', []);
     showToast('⚠️ Offline mode — using local data');
   }
   hideLoading();
@@ -770,7 +850,7 @@ async function saveSettingsToDB() {
 async function saveToDB() {
   save('stalls', stalls); save('payments', payments); save('utilities', utilities); save('maintenance', maintenance);
   try {
-    await setDoc(doc(db, 'stalltrack', DB_ID), { stalls, payments, utilities, maintenance, deletedPayments, updatedAt: new Date().toISOString() });
+    await setDoc(doc(db, 'stalltrack', DB_ID), { stalls, payments, utilities, maintenance, deletedPayments, expenses, updatedAt: new Date().toISOString() });
   } catch(e) { console.error(e); showToast('⚠️ Saved locally — will sync when online'); }
 }
 
@@ -876,7 +956,7 @@ window.doLogin = doLogin; window.doLogout = doLogout; window.sendPasswordReset =
 function showPage(name, el) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active')); document.getElementById('page-' + name).classList.add('active'); el.classList.add('active'); }
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-function renderAll() { renderDashboard(); renderStalls(); renderPayments(); renderUtilities(); renderMaintenance(); }
+function renderAll() { renderDashboard(); renderStalls(); renderPayments(); renderUtilities(); renderMaintenance(); renderExpenses(); }
 
 function renderDashboard() {
   const now = new Date();
@@ -1682,6 +1762,10 @@ async function saveRename() { const stallId = parseInt(document.getElementById('
 function openNotes(stallId) { const s = stalls.find(x => x.id === stallId); document.getElementById('notes-stall-id').value = stallId; document.getElementById('modal-notes-title').textContent = `📝 Notes — ${s.name}`; document.getElementById('notes-input').value = s.notes || ''; openModal('modal-notes'); }
 async function saveNotes() { const stallId = parseInt(document.getElementById('notes-stall-id').value); stalls.find(x=>x.id===stallId).notes = document.getElementById('notes-input').value.trim(); await saveAll(); renderAll(); closeModal('modal-notes'); showToast('✅ Notes saved!'); }
 
+// ─── EXPENSE CONSTANTS ────────────────────────────────────────
+const EXP_ICONS = { Materials:'🔧', Labour:'👷', Cleaning:'🧹', Permits:'📋', Other:'📦' };
+const EXP_COLORS = { Materials:'var(--accent2)', Labour:'var(--warning)', Cleaning:'var(--success)', Permits:'var(--accent)', Other:'var(--text2)' };
+
 function renderReport() {
   const monthInput = document.getElementById('report-month');
   if (!monthInput.value) monthInput.value = new Date().toISOString().slice(0, 7);
@@ -1692,27 +1776,72 @@ function renderReport() {
   const totalCollected = monthPayments.reduce((a, p) => a + p.amount, 0);
   const monthUtils = utilities.filter(u => u.date && u.date.startsWith(month));
   const totalUtils = monthUtils.reduce((a, u) => a + u.amount, 0);
+  const monthExpenses = expenses.filter(e => e.date && e.date.startsWith(month));
+  const totalExpenses = monthExpenses.reduce((a, e) => a + e.amount, 0);
+  const totalCosts = totalUtils + totalExpenses;
+  const netProfit = totalCollected - totalCosts;
+
   let html = `<div style="font-family:'Syne',sans-serif;font-weight:800;font-size:17px;margin-bottom:14px;">📊 ${monthName}</div>
     <div class="stat-grid" style="margin-bottom:16px;">
-      <div class="stat-card"><div class="stat-label">Total Collected</div><div class="stat-value accent">KSh ${totalCollected.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="stat-label">Rent Collected</div><div class="stat-value accent">KSh ${totalCollected.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="stat-label">Total Expenses</div><div class="stat-value danger">KSh ${totalExpenses.toLocaleString()}</div></div>
       <div class="stat-card"><div class="stat-label">Utility Bills</div><div class="stat-value warning">KSh ${totalUtils.toLocaleString()}</div></div>
-      <div class="stat-card"><div class="stat-label">Payments Made</div><div class="stat-value">${monthPayments.length}</div></div>
-      <div class="stat-card"><div class="stat-label">Net Income</div><div class="stat-value accent">KSh ${(totalCollected - totalUtils).toLocaleString()}</div></div>
+      <div class="stat-card"><div class="stat-label">Net Profit</div><div class="stat-value ${netProfit>=0?'accent':'danger'}">KSh ${netProfit.toLocaleString()}</div></div>
     </div>
+
+    <!-- Profit/Loss Bar -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:13px;margin-bottom:12px;">💰 Profit / Loss Breakdown</div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;"><span style="color:var(--text2);">Rent Income</span><span style="color:var(--accent);font-family:'DM Mono',monospace;">+ KSh ${totalCollected.toLocaleString()}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;"><span style="color:var(--text2);">Property Expenses</span><span style="color:var(--danger);font-family:'DM Mono',monospace;">- KSh ${totalExpenses.toLocaleString()}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:10px;"><span style="color:var(--text2);">Utility Bills</span><span style="color:var(--danger);font-family:'DM Mono',monospace;">- KSh ${totalUtils.toLocaleString()}</span></div>
+      <div style="border-top:2px solid var(--border);padding-top:10px;display:flex;justify-content:space-between;font-family:'Syne',sans-serif;font-weight:800;font-size:15px;">
+        <span>NET PROFIT</span>
+        <span style="color:${netProfit>=0?'var(--accent)':'var(--danger)'};">${netProfit>=0?'':'- '}KSh ${Math.abs(netProfit).toLocaleString()}</span>
+      </div>
+    </div>
+
     <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin-bottom:10px;">Stall Breakdown</div>`;
+
   stalls.forEach(s => {
     const stallPays = monthPayments.filter(p => p.stallId === s.id);
     const stallTotal = stallPays.reduce((a, p) => a + p.amount, 0);
+    const stallExp = monthExpenses.filter(e => e.stallId === s.id);
+    const stallExpTotal = stallExp.reduce((a, e) => a + e.amount, 0);
     html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="font-weight:600;">${s.name}</span><span class="badge ${stallTotal>0?'badge-paid':s.tenant?'badge-overdue':'badge-vacant'}">${stallTotal>0?'✓ Paid':s.tenant?'Overdue':'Vacant'}</span></div>
       <div style="font-size:12px;color:var(--text2);">${s.tenant?s.tenant.name:'No tenant'} · Expected: KSh ${s.rent.toLocaleString()}</div>
       ${stallPays.length>0?stallPays.map(p=>`<div style="font-size:12px;margin-top:4px;color:var(--text);display:flex;justify-content:space-between;"><span>${p.method} ${p.ref?'· '+p.ref:''}</span><span style="font-family:'DM Mono',monospace;color:var(--accent);">KSh ${p.amount.toLocaleString()}</span></div>`).join(''):'<div style="font-size:12px;color:var(--text3);margin-top:4px;">No payment recorded</div>'}
+      ${stallExpTotal>0?`<div style="font-size:12px;margin-top:4px;color:var(--danger);">Expenses this month: KSh ${stallExpTotal.toLocaleString()}</div>`:''}
     </div>`;
   });
+
+  // Expenses breakdown
+  if (monthExpenses.length > 0) {
+    html += `<div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin:16px 0 10px;">💸 Expenses This Month</div>`;
+    // Group by category
+    const cats = {};
+    monthExpenses.forEach(e => { if (!cats[e.category]) cats[e.category] = []; cats[e.category].push(e); });
+    Object.entries(cats).forEach(([cat, items]) => {
+      const catTotal = items.reduce((a,e)=>a+e.amount,0);
+      html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-weight:600;color:${EXP_COLORS[cat]||'var(--text)'};">${EXP_ICONS[cat]||'📦'} ${cat}</span>
+          <span style="font-family:'DM Mono',monospace;color:var(--danger);">KSh ${catTotal.toLocaleString()}</span>
+        </div>
+        ${items.map(e=>`<div style="font-size:12px;color:var(--text2);display:flex;justify-content:space-between;padding:3px 0;border-top:1px solid var(--border);">
+          <span>${e.description}${e.supplier?' · '+e.supplier:''}</span>
+          <span style="font-family:'DM Mono',monospace;color:var(--text);">KSh ${e.amount.toLocaleString()}</span>
+        </div>`).join('')}
+      </div>`;
+    });
+  }
+
   if (monthUtils.length > 0) {
-    html += `<div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin:16px 0 10px;">Utility Bills</div>`;
+    html += `<div style="font-family:'Syne',sans-serif;font-weight:700;font-size:14px;margin:16px 0 10px;">⚡ Utility Bills</div>`;
     monthUtils.forEach(u => { const s = stalls.find(x=>x.id===u.stallId); html += `<div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-size:13px;">${u.type} ${u.type==='Water'?'💧':'⚡'} — ${s?s.name:''}</div><div style="font-size:11px;color:var(--text2);">${u.date} · <span class="badge ${u.status==='Paid'?'badge-paid':'badge-overdue'}">${u.status}</span></div></div><div style="font-family:'DM Mono',monospace;color:var(--warning);">KSh ${u.amount.toLocaleString()}</div></div>`; });
   }
+
   document.getElementById('report-content').innerHTML = html;
 }
 
@@ -1747,7 +1876,7 @@ function exportReportExcel() {
 }
 
 function exportBackup() {
-  const backup = { version: '1.0', exportedAt: new Date().toISOString(), stalls, payments, utilities, maintenance };
+  const backup = { version: '1.0', exportedAt: new Date().toISOString(), stalls, payments, utilities, maintenance, expenses };
   const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = `stalltrack-backup-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url);
@@ -1763,7 +1892,7 @@ function importBackup(event) {
       const data = JSON.parse(e.target.result);
       if (!data.stalls || !data.payments) { alert('❌ Invalid backup file.'); return; }
       if (!confirm(`⚠️ This will REPLACE all current data with backup from ${data.exportedAt ? new Date(data.exportedAt).toLocaleDateString() : 'unknown date'}.\n\nAre you sure?`)) return;
-      stalls = data.stalls || defaultStalls; payments = data.payments || []; utilities = data.utilities || []; maintenance = data.maintenance || [];
+      stalls = data.stalls || defaultStalls; payments = data.payments || []; utilities = data.utilities || []; maintenance = data.maintenance || []; expenses = data.expenses || [];
       saveAll(); renderAll(); renderSettings(); alert('✅ Backup restored successfully!');
     } catch { alert('❌ Could not read backup file.'); }
   };
@@ -1873,6 +2002,127 @@ async function saveBranding() {
   showToast('✅ Branding saved & applied!');
 }
 
+// ─── EXPENSES ─────────────────────────────────────────────────
+let expenseFilter = 'all';
+
+function openAddExpense(editId) {
+  const sel = document.getElementById('exp-stall');
+  sel.innerHTML = `<option value="general">🏢 General (whole property)</option>` +
+    stalls.map(s => `<option value="${s.id}">${s.name}${s.tenant?' — '+s.tenant.name:''}</option>`).join('');
+  document.getElementById('exp-edit-id').value = '';
+  document.getElementById('modal-expense-title').textContent = '💸 Add Expense';
+  document.getElementById('exp-category').value = 'Materials';
+  document.getElementById('exp-description').value = '';
+  document.getElementById('exp-amount').value = '';
+  document.getElementById('exp-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('exp-stall').value = 'general';
+  document.getElementById('exp-supplier').value = '';
+  document.getElementById('exp-receipt').value = '';
+  document.getElementById('exp-notes').value = '';
+  if (editId) {
+    const e = expenses.find(x => x.id === editId);
+    if (e) {
+      document.getElementById('exp-edit-id').value = editId;
+      document.getElementById('modal-expense-title').textContent = '✏️ Edit Expense';
+      document.getElementById('exp-category').value = e.category;
+      document.getElementById('exp-description').value = e.description;
+      document.getElementById('exp-amount').value = e.amount;
+      document.getElementById('exp-date').value = e.date;
+      document.getElementById('exp-stall').value = e.stallId || 'general';
+      document.getElementById('exp-supplier').value = e.supplier || '';
+      document.getElementById('exp-receipt').value = e.receiptNo || '';
+      document.getElementById('exp-notes').value = e.notes || '';
+    }
+  }
+  openModal('modal-expense');
+}
+
+async function saveExpense() {
+  const category = document.getElementById('exp-category').value;
+  const description = document.getElementById('exp-description').value.trim();
+  const amount = parseInt(document.getElementById('exp-amount').value);
+  const date = document.getElementById('exp-date').value;
+  const stallVal = document.getElementById('exp-stall').value;
+  const stallId = stallVal === 'general' ? null : parseInt(stallVal);
+  const supplier = document.getElementById('exp-supplier').value.trim();
+  const receiptNo = document.getElementById('exp-receipt').value.trim();
+  const notes = document.getElementById('exp-notes').value.trim();
+  const editId = document.getElementById('exp-edit-id').value;
+  if (!description || !amount || !date) { alert('Please fill description, amount and date.'); return; }
+  if (editId) {
+    const idx = expenses.findIndex(x => x.id === parseInt(editId));
+    if (idx >= 0) expenses[idx] = { ...expenses[idx], category, description, amount, date, stallId, supplier, receiptNo, notes };
+  } else {
+    expenses.push({ id: Date.now(), category, description, amount, date, stallId, supplier, receiptNo, notes });
+  }
+  await saveAll(); renderExpenses(); closeModal('modal-expense');
+  showToast(`✅ Expense ${editId ? 'updated' : 'saved'}!`);
+}
+
+async function deleteExpense(id) {
+  if (!confirm('Delete this expense?')) return;
+  expenses = expenses.filter(x => x.id !== id);
+  await saveAll(); renderExpenses();
+  showToast('🗑️ Expense deleted');
+}
+
+function filterExpenses(cat, btn) {
+  expenseFilter = cat;
+  document.querySelectorAll('.exp-filter-btn').forEach(b => {
+    b.style.background = 'none'; b.style.color = 'var(--text2)'; b.style.borderColor = 'var(--border)';
+  });
+  btn.style.background = 'var(--accent)'; btn.style.color = '#0f0f0f'; btn.style.borderColor = 'var(--accent)';
+  renderExpenses();
+}
+
+function renderExpenses() {
+  // Summary cards
+  const now = new Date();
+  const thisMonth = now.toISOString().slice(0, 7);
+  const monthExp = expenses.filter(e => e.date && e.date.startsWith(thisMonth));
+  const totalThisMonth = monthExp.reduce((a, e) => a + e.amount, 0);
+  const totalAllTime = expenses.reduce((a, e) => a + e.amount, 0);
+  const totalRentThisMonth = payments.filter(p => p.month === thisMonth).reduce((a, p) => a + p.amount, 0);
+  const profit = totalRentThisMonth - totalThisMonth;
+  document.getElementById('expense-summary').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Spent This Month</div><div class="stat-value danger">KSh ${totalThisMonth.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">Rent This Month</div><div class="stat-value accent">KSh ${totalRentThisMonth.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">Net Profit (Month)</div><div class="stat-value ${profit>=0?'accent':'danger'}">KSh ${profit.toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">Total Expenses Ever</div><div class="stat-value warning">KSh ${totalAllTime.toLocaleString()}</div></div>
+  `;
+  // Filter & sort
+  const filtered = [...expenses]
+    .filter(e => expenseFilter === 'all' || e.category === expenseFilter)
+    .sort((a, b) => b.date.localeCompare(a.date));
+  if (filtered.length === 0) {
+    document.getElementById('expenses-list').innerHTML = `<div class="empty-state"><div class="icon">💸</div>No expenses recorded${expenseFilter !== 'all' ? ' in this category' : ' yet'}</div>`;
+    return;
+  }
+  document.getElementById('expenses-list').innerHTML = filtered.map(e => {
+    const s = e.stallId ? stalls.find(x => x.id === e.stallId) : null;
+    const icon = EXP_ICONS[e.category] || '📦';
+    const color = EXP_COLORS[e.category] || 'var(--text2)';
+    return `<div class="payment-item">
+      <div class="payment-top">
+        <span style="font-family:'DM Mono',monospace;font-size:16px;color:var(--danger);font-weight:500;">- KSh ${e.amount.toLocaleString()}</span>
+        <span class="payment-date">${e.date}</span>
+      </div>
+      <div style="font-weight:600;color:var(--text);margin-bottom:4px;">${e.description}</div>
+      <div class="payment-meta">
+        <span style="color:${color};">${icon} ${e.category}</span>
+        · ${s ? s.name : '🏢 General'}
+        ${e.supplier ? ' · ' + e.supplier : ''}
+      </div>
+      ${e.receiptNo ? `<div class="payment-meta" style="margin-top:2px;">🧾 <span style="font-family:'DM Mono',monospace;color:var(--accent2);">${e.receiptNo}</span></div>` : ''}
+      ${e.notes ? `<div class="payment-meta" style="margin-top:2px;">${e.notes}</div>` : ''}
+      <div style="margin-top:8px;display:flex;gap:6px;">
+        <button class="btn btn-secondary btn-sm" onclick="openAddExpense(${e.id})">✏️ Edit</button>
+        <button class="btn btn-sm" style="background:rgba(240,96,96,0.15);color:var(--danger);border:1px solid rgba(240,96,96,0.3);" onclick="deleteExpense(${e.id})">🗑️ Delete</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ─── EXPOSE ALL TO WINDOW ─────────────────────────────────────
 window.showPage = showPage; window.openModal = openModal; window.closeModal = closeModal;
 window.renderAll = renderAll; window.renderSettings = renderSettings; window.renderReport = renderReport;
@@ -1889,6 +2139,7 @@ window.openAddPayment = openAddPayment; window.savePayment = savePayment;
 window.parseMpesaSMS = parseMpesaSMS; window.showReceipt = showReceipt; window.shareReceipt = shareReceipt; window.downloadReceiptPDF = downloadReceiptPDF; window.shareReceiptImage = shareReceiptImage; window.shareReceiptPDFWhatsApp = shareReceiptPDFWhatsApp;
 window.openAddUtility = openAddUtility; window.saveUtility = saveUtility;
 window.openAddMaintenance = openAddMaintenance; window.saveMaintenance = saveMaintenance; window.toggleMaintStatus = toggleMaintStatus;
+window.openAddExpense = openAddExpense; window.saveExpense = saveExpense; window.deleteExpense = deleteExpense; window.filterExpenses = filterExpenses; window.renderExpenses = renderExpenses;
 window.exportBackup = exportBackup; window.importBackup = importBackup;
 window.handleLogoUpload = handleLogoUpload; window.removeLogo = removeLogo; window.saveBranding = saveBranding;
 
